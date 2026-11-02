@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+*.log
+expo-qr.png
+
+.expo/
+.expo-shared/
+dist/
+build/

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Implementation tasks for provider-backed bank onboarding and removal of simulated payment behavior across the Expo and Spring Boot workspaces.",
+  "tasks": [
+    {
+      "type": "transform",
+      "id": "001-transform-backend-provider-adapters",
+      "description": "Add secure, provider-backed SMS and bank verification",
+      "reason": "Replace mock onboarding with real provider outcomes while keeping sensitive data and credentials protected.",
+      "requirements": "In Workspace B, inspect and integrate with current dirty/shared edits without reverting unrelated work or changing existing login, registration, or general authentication behavior. Add explicit server-side configuration for Twilio Verify and MSG91, with explicit provider selection, separate test and production configuration, and clean unavailable/NOT_CONFIGURED behavior when credentials are absent. Provider OTP generation and validation must remain with the provider; never return, log, or persist plaintext OTPs. Persist only the provider challenge reference and hashed or equivalently protected phone identifier; enforce ownership, challenge expiry, attempt limits, and rate limits. Add a Cashfree Secure ID V2 adapter only against the verified official contract, using server-side account/name/phone data and IFSC only if required. Persist only masked account numbers. Map to VERIFIED only for a documented account-valid result and acceptable name match; map other results to PENDING or FAILED. Treat an API-level SUCCESS as insufficient by itself. Avoid logging phone/account/secret/token data. If a documented contract cannot be established, keep the operation unavailable rather than inventing fields or endpoints. Add tests for missing credentials/no OTP, provider-approved vs invalid account status, ownership, persistence/response/log redaction, expiry and limits.",
+      "dependencies": [],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "002-transform-setu-aa-consent-gating",
+      "description": "Gate Setu account aggregation on consent and verified contracts",
+      "reason": "Prevent unsupported balance claims and ensure account data is sourced only from a consented, real financial-institution fetch.",
+      "requirements": "In Workspace B, implement a Setu Account Aggregator flow only where exact endpoint contracts have been verified against official documentation. Require explicit recorded consent and actual FI data retrieval before showing a balance. Respect production eligibility prerequisites, including qualifying FIU status, KYC, Sahamati certification, and production credentials. Display only values, timestamp, and currency actually returned by the FI response; bank verification does not imply balance access. Use only documented safe polling; do not invent webhook signatures, accept unverified callbacks, or guess contracts. If requirements or contracts are unmet, return explicit unavailable/configuration-pending and keep the feature gated. Add tests that prove no balance is fabricated or exposed without consent and real FI data.",
+      "dependencies": [
+        "001-transform-backend-provider-adapters"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "003-transform-disable-simulated-payments",
+      "description": "Disable simulated payments and transaction surfaces in the backend",
+      "reason": "Avoid false payment claims and prevent QR codes from directing funds to an unrelated merchant entity.",
+      "requirements": "In Workspace B, disable/remove /api/payments/prepare, /api/demo/**, /api/mesh/**, and simulated ledger behavior without breaking authentication or general APIs. Transaction-history requests must return an explicit unavailable/pending result, never fabricated history. Do not initiate payments, produce recipient-specific QR codes, claim payment success, enable recipient connected-account/Route settlement, or use RazorpayX. Do not accept unauthenticated webhook callbacks or callbacks without a verified provider signature contract. Preserve unrelated existing dirty/shared worktree changes. Add tests proving payment/QR/ledger simulation is disabled, transaction responses are not fake, and webhook handling fails closed.",
+      "dependencies": [
+        "002-transform-setu-aa-consent-gating"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "004-transform-frontend-provider-setup",
+      "description": "Replace simulated bank and payment behavior in the Expo frontend",
+      "reason": "Present only real provider outcomes and avoid misleading users about payments, balances, or transaction history.",
+      "requirements": "In Workspace A, preserve existing login and signup behavior. Remove mock/simulated labels, deterministic 0000 failure behavior, offline queue/payment-success claims, fake transaction/history/balance data, and recipient-specific QR flows. Show clear provider setup pending/unavailable states and explicit errors. Make bank selection searchable and limited to provider-compatible supported banks; collect IFSC only when required. Never collect ATM/UPI PIN, CVV, passwords, or display a complete account number. A balance action requires recorded explicit AA consent and must show only actual provider/FI data. Do not add a user-specific QR on a single merchant account. Integrate with current dirty/shared files without overwriting unrelated edits. Add/update frontend tests or focused validation for these behaviors.",
+      "dependencies": [
+        "003-transform-disable-simulated-payments"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "005-transform-provider-onboarding-docs",
+      "description": "Document provider onboarding, configuration, and limitations",
+      "reason": "Make provider setup and intentionally unavailable capabilities clear to operators and users.",
+      "requirements": "Update Workspace B README.md without overwriting unrelated current edits. Provide an onboarding checklist for Twilio Verify, MSG91, Cashfree Secure ID V2, and Setu AA, with the exact environment-variable names implemented by the backend, server-only credential handling, and separate test/production configuration. Document provider prerequisites, Cashfree account-valid/name-match behavior, Setu FIU/KYC/Sahamati/consent requirements, and clean unavailable behavior when setup or verified contracts are absent. State that recipient settlement/Route is unapproved and payment initiation, recipient QR, simulated transactions, and RazorpayX are unsupported. Do not include secrets or invent env var names, endpoints, or provider contract details.",
+      "dependencies": [
+        "004-transform-frontend-provider-setup"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "security",
+      "id": "006-security-provider-integrations",
+      "description": "Review provider data handling and remediate dependency vulnerabilities",
+      "reason": "Protect authentication and financial identifiers while validating dependencies changed by the provider work.",
+      "requirements": "Review the affected backend and frontend changes for server-only secrets, sensitive-data logging/response/persistence, OTP challenge ownership and expiry, consent enforcement, authorization boundaries, and fail-closed callback handling. Confirm full account numbers, OTP plaintext, phone numbers, credentials, and tokens are not exposed in logs or responses. Scan project dependencies for known CVEs and remediate identified issues to patched versions where compatible; document any major-version risk. Preserve unrelated worktree changes and verify builds and tests after remediation.",
+      "skills": [
+        {
+          "name": "cve-remediation",
+          "location": "builtin"
+        }
+      ],
+      "dependencies": [
+        "005-transform-provider-onboarding-docs"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "true",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "007-transform-cross-repo-validation",
+      "description": "Validate backend tests and frontend platform exports",
+      "reason": "Confirm the coordinated changes build and package for the requested platforms.",
+      "requirements": "Run targeted and full Maven tests in Workspace B and validate the Spring Boot build. In Workspace A, validate Expo web and Android exports using the project's supported Expo tooling. Include focused evidence for provider-unconfigured behavior and disabled payment surfaces. Resolve regressions caused by these planned changes while preserving existing authentication and unrelated dirty/shared edits; do not commit. If a toolchain or provider contract blocks validation, record the exact blocker and leave unsupported provider behavior unavailable rather than fabricating a passing result.",
+      "dependencies": [
+        "006-security-provider-integrations"
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    }
+  ],
+  "metadata": {
+    "planName": "provider-integrations-and-payment-disable",
+    "projectName": "MeshPay Expo frontend and UPI Offline Mesh backend",
+    "language": "java",
+    "createdAt": "2026-10-31T01:14:04+05:30",
+    "version": "1.0"
+  }
+}

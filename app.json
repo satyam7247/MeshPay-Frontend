@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "MeshPay",
+    "slug": "meshpay",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.meshpay.app"
+    },
+    "ios": {
+      "bundleIdentifier": "com.meshpay.app"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-sqlite",
+      "expo-secure-store",
+      "./plugins/withUpiIntentQueries",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "payments",
+          "enableRemoteNotifications": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow MeshPay to use your camera to scan recipient QR codes.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ]
+    ]
+  }
+}
