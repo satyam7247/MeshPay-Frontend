@@ -1,15 +1,15 @@
 import React from 'react';
-import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AppProvider } from './src/context/AppContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { colors } from './src/theme/colors';
 import { useApp } from './src/context/AppContext';
 import { notificationsService } from './src/services/notificationsService';
+import { navigationRef } from './src/navigation/navigationRef';
 
 function AppShell() {
   const {resolvedTheme,user}=useApp();
-  const navigationRef=useNavigationContainerRef();
   const base=resolvedTheme==='dark'?DarkTheme:DefaultTheme;
   const theme={...base,colors:{...base.colors,background:colors.bg,card:colors.surface,text:colors.text,primary:colors.blue}};
   React.useEffect(()=>{

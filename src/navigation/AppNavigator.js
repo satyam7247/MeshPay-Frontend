@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,11 +8,17 @@ import {
   Success,History,Details,Profile,Request,Scan,Settings,PasswordRecovery,Notifications,
 } from '../screens/Screens';
 import { useApp } from '../context/AppContext';
+import { ActivityIndicator, View } from 'react-native';
 
 const Stack=createNativeStackNavigator();
 const Tabs=createBottomTabNavigator();
 
-function MainTabs() {
+function MainTabs({navigation}) {
+  const {user,isRestoringSession}=useApp();
+  useEffect(()=>{
+    if(!isRestoringSession&&!user)navigation.getParent()?.reset({index:0,routes:[{name:'Splash'}]});
+  },[isRestoringSession,user,navigation]);
+  if(isRestoringSession||!user)return <View style={{flex:1,alignItems:'center',justifyContent:'center',backgroundColor:c.bg}}><ActivityIndicator color={c.blue}/></View>;
   return <Tabs.Navigator initialRouteName="Home" screenOptions={({route})=>({
     headerShown:false,
     tabBarStyle:{backgroundColor:c.surface,borderTopColor:c.line,height:68,paddingBottom:8,paddingTop:7},

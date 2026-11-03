@@ -7,12 +7,11 @@ import { colors as c } from '../theme/colors';
 import { Page, Header, Button, Card, Label, Avatar, Field, Badge, SectionTitle } from '../components/UI';
 import { UpiIntentButton } from '../components/UpiIntentButton';
 import { useApp } from '../context/AppContext';
-import { contactsService } from '../services/contactsService';
 import { meshService } from '../services/meshService';
 import { authService } from '../services/authService';
 import { bankAccountsService } from '../services/bankAccountsService';
 import { recipientLookupService } from '../services/recipientLookupService';
-import { RecipientLookupStatus, RecipientDataSource, RecipientVerificationStatus, normalizeMobileNumber } from '../services/recipientModels';
+import { RecipientLookupStatus, RecipientDataSource, normalizeMobileNumber } from '../services/recipientModels';
 import { paymentsService } from '../services/paymentsService';
 import { notificationsService } from '../services/notificationsService';
 import { privacyAccountService } from '../services/privacyAccountService';
@@ -26,6 +25,19 @@ import { offlineTransactionLedgerService } from '../services/offlineTransactionL
 const DEMO_MERCHANT_UPI_ID = __DEV__
   ? (process.env.EXPO_PUBLIC_DEMO_MERCHANT_UPI_ID || 'merchant@upi').trim()
   : '';
+
+const passwordByteLength=value=>{
+  try { return encodeURIComponent(value).replace(/%[0-9A-F]{2}/g,'U').length; }
+  catch { return Infinity; }
+};
+const isValidPassword=value=>value.length>=8&&passwordByteLength(value)<=72
+  &&/[A-Z]/.test(value)&&/[a-z]/.test(value)&&/[0-9]/.test(value)&&/[^A-Za-z0-9]/.test(value);
+const normalizeDecimalInput=value=>{
+  const cleaned=value.replace(/[^0-9.]/g,'');
+  const dot=cleaned.indexOf('.');
+  if(dot<0)return cleaned.slice(0,72);
+  return `${cleaned.slice(0,dot)}.${cleaned.slice(dot+1).replace(/\./g,'').slice(0,2)}`.slice(0,72);
+};
 
 function Row({ icon, title, subtitle, action, danger=false }) {
   return <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
@@ -222,7 +234,7 @@ export function Auth({navigation,route}) {
     if(signup&&!name.trim())return setError('Enter your name.');
     if(!/^\S+@\S+\.\S+$/.test(email.trim()))return setError('Enter a valid email address.');
     if(signup&&!/^\+?[0-9\s()-]{8,18}$/.test(phone.trim()))return setError('Enter a valid phone number.');
-    if(password.length<8)return setError('Password must be at least 8 characters.');
+    if(signup&&!isValidPassword(password))return setError('Use 8–72 UTF-8 bytes with uppercase, lowercase, a number, and a special character.');
     if(signup&&password!==confirmPassword)return setError('Passwords do not match.');
     submitInFlight.current=true;
     setBusy(true);
@@ -262,8 +274,8 @@ export function Auth({navigation,route}) {
       {signup&&<View><Label>Full name</Label><Field value={name} onChangeText={setName} placeholder="Enter your name" autoCapitalize="words" returnKeyType="next"/></View>}
       <View><Label>Email address</Label><Field value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" autoComplete="email" returnKeyType="next"/></View>
       {signup&&<View><Label>Mobile number</Label><Field value={phone} onChangeText={setPhone} placeholder="Enter your phone number" keyboardType="phone-pad" autoComplete="tel" returnKeyType="next"/></View>}
-      <View><Label>Password</Label><View style={{position:'relative',justifyContent:'center'}}><Field value={password} onChangeText={setPassword} placeholder="Enter your password" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete={signup?'new-password':'current-password'} returnKeyType={signup?'next':'done'} style={{height:54,borderRadius:14,backgroundColor:c.bg,borderColor:c.line,borderWidth:1,paddingHorizontal:15,paddingRight:54,color:c.text,fontSize:15}}/><TouchableOpacity onPress={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:12,padding:8}} accessibilityLabel={showPassword?'Hide password':'Show password'}><Ionicons name={showPassword?'eye-off-outline':'eye-outline'} size={20} color={c.muted}/></TouchableOpacity></View></View>
-      {signup&&<View><Label>Confirm password</Label><Field value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter your password" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete="new-password" returnKeyType="done"/></View>}
+      <View><Label>Password</Label><View style={{position:'relative',justifyContent:'center'}}><Field value={password} onChangeText={setPassword} placeholder="Enter your password" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete={signup?'new-password':'current-password'} returnKeyType={signup?'next':'done'} maxLength={72} style={{height:54,borderRadius:14,backgroundColor:c.bg,borderColor:c.line,borderWidth:1,paddingHorizontal:15,paddingRight:54,color:c.text,fontSize:15}}/><TouchableOpacity onPress={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:12,padding:8}} accessibilityLabel={showPassword?'Hide password':'Show password'}><Ionicons name={showPassword?'eye-off-outline':'eye-outline'} size={20} color={c.muted}/></TouchableOpacity></View></View>
+      {signup&&<View><Label>Confirm password</Label><Field value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter your password" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete="new-password" returnKeyType="done" maxLength={72}/></View>}
     </Card>
     {error?<Card style={{borderColor:'#F2C1C5',backgroundColor:'#FFF4F4',padding:13}}><Text style={{color:c.red,lineHeight:20,fontSize:13}}>{error}</Text></Card>:null}
     <Button title={busy?'Please wait...':signup?'Create account':'Continue to MeshPay'} icon={busy?undefined:'arrow-forward'} disabled={busy} onPress={submit}/>
@@ -273,7 +285,7 @@ export function Auth({navigation,route}) {
 }
 
 export function PasswordRecovery({navigation,route}) {
-  const {setUser,setOfflineSession}=useApp();
+  const {clearSession}=useApp();
   const isChange=route?.params?.mode==='change';
   const [stage,setStage]=useState('request');
   const [forgotCurrent,setForgotCurrent]=useState(false);
@@ -298,10 +310,8 @@ export function PasswordRecovery({navigation,route}) {
     return()=>clearTimeout(timer);
   },[seconds]);
 
-  const validNewPassword=value=>value.length>=8&&encodeURIComponent(value).replace(/%[0-9A-F]{2}/g,'U').length<=72
-    &&/[A-Z]/.test(value)&&/[a-z]/.test(value)&&/[0-9]/.test(value)&&/[^A-Za-z0-9]/.test(value);
   const validateNew=()=>{
-    if(!validNewPassword(newPassword))return 'Use 8–72 UTF-8 bytes with uppercase, lowercase, a number, and a special character.';
+    if(!isValidPassword(newPassword))return 'Use 8–72 UTF-8 bytes with uppercase, lowercase, a number, and a special character.';
     if(newPassword!==confirmPassword)return 'New passwords do not match.';
     return '';
   };
@@ -337,7 +347,7 @@ export function PasswordRecovery({navigation,route}) {
     setBusy(true);
     try {
       await passwordService.change(currentPassword,newPassword);
-      await authService.logout();setUser(null);setOfflineSession(false);setCompleted(true);
+      await clearSession({navigate:false});setCompleted(true);
       setInfo('Your password was updated. All existing sessions were signed out.');
     } catch(e) {setError(e.message||'Password could not be changed.');}
     finally {setBusy(false);}
@@ -348,13 +358,13 @@ export function PasswordRecovery({navigation,route}) {
     setBusy(true);
     try {
       await passwordService.reset(challengeId,resetToken,newPassword);
-      await authService.logout();setUser(null);setOfflineSession(false);setCompleted(true);
+      await clearSession({navigate:false});setCompleted(true);
       setInfo('Your password was reset. All existing sessions were signed out.');
     } catch(e) {setError(e.message||'Password could not be reset.');}
     finally {setBusy(false);}
   };
   const continueToLogin=()=>navigation.reset({index:0,routes:[{name:'Auth',params:{mode:'login'}}]});
-  const passwordField=(label,value,onChange,placeholder)=> <View style={{gap:7}}><Label>{label}</Label><View style={{position:'relative',justifyContent:'center'}}><Field value={value} onChangeText={onChange} placeholder={placeholder} secureTextEntry={!showPasswords} autoCapitalize="none" autoComplete="new-password" style={{minHeight:52,paddingRight:50}}/><TouchableOpacity onPress={()=>setShowPasswords(v=>!v)} accessibilityLabel={showPasswords?'Hide passwords':'Show passwords'} style={{position:'absolute',right:12,padding:8}}><Ionicons name={showPasswords?'eye-off-outline':'eye-outline'} size={20} color={c.muted}/></TouchableOpacity></View></View>;
+  const passwordField=(label,value,onChange,placeholder)=> <View style={{gap:7}}><Label>{label}</Label><View style={{position:'relative',justifyContent:'center'}}><Field value={value} onChangeText={onChange} placeholder={placeholder} secureTextEntry={!showPasswords} autoCapitalize="none" autoComplete="new-password" maxLength={72} style={{minHeight:52,paddingRight:50}}/><TouchableOpacity onPress={()=>setShowPasswords(v=>!v)} accessibilityLabel={showPasswords?'Hide passwords':'Show passwords'} style={{position:'absolute',right:12,padding:8}}><Ionicons name={showPasswords?'eye-off-outline':'eye-outline'} size={20} color={c.muted}/></TouchableOpacity></View></View>;
 
   return <Page>
     <Header title={isChange?'Change Password':'Reset Password'} back onBack={()=>navigation.goBack()}/>
@@ -458,7 +468,7 @@ export function SendMoney({navigation,route}) {
   };
   const continueToConfirm=()=>{
     if(isAccountLocked)return setError('This account is emergency locked. Unlock it in Privacy & Account before continuing.');
-    const numeric=Number(amount);
+    const numeric=Math.round((Number(amount)+Number.EPSILON)*100)/100;
     if(!lookup?.recipient)return setError('Find a recipient before continuing.');
     if(!Number.isFinite(numeric)||numeric<=0)return setError('Enter an amount greater than zero.');
     const typed=normalizeMobileNumber(mobileNumber);
@@ -502,7 +512,7 @@ export function SendMoney({navigation,route}) {
     {error?<Text style={{color:c.red,fontSize:13}}>{error}</Text>:null}
     {saveMessage?<Text style={{color:c.muted,fontSize:12}}>{saveMessage}</Text>:null}
     {found?<View style={{gap:12}}>
-      <View><Label>Amount</Label><View style={{flexDirection:'row',alignItems:'center',height:62,borderWidth:1,borderColor:c.line,borderRadius:16,backgroundColor:c.surface,paddingHorizontal:16,gap:8}}><Text style={{color:c.text,fontSize:22,fontWeight:'800'}}>₹</Text><Field value={amount} onChangeText={value=>{setAmount(value.replace(/[^0-9.]/g,''));setError('');}} keyboardType="decimal-pad" placeholder="0.00" style={{flex:1,height:58,borderWidth:0,backgroundColor:'transparent',paddingHorizontal:0,fontSize:22,fontWeight:'800'}}/></View></View>
+      <View><Label>Amount</Label><View style={{flexDirection:'row',alignItems:'center',height:62,borderWidth:1,borderColor:c.line,borderRadius:16,backgroundColor:c.surface,paddingHorizontal:16,gap:8}}><Text style={{color:c.text,fontSize:22,fontWeight:'800'}}>₹</Text><Field value={amount} onChangeText={value=>{setAmount(normalizeDecimalInput(value));setError('');}} keyboardType="decimal-pad" placeholder="0.00" maxLength={72} style={{flex:1,height:58,borderWidth:0,backgroundColor:'transparent',paddingHorizontal:0,fontSize:22,fontWeight:'800'}}/></View></View>
       <View style={{flexDirection:'row',gap:8}}>{['100','200','500','1000'].map(value=><TouchableOpacity key={value} onPress={()=>setAmount(value)} style={{flex:1,paddingVertical:10,borderRadius:12,borderWidth:1,borderColor:c.line,backgroundColor:amount===value?'#E5F0FF':c.surface,alignItems:'center'}}><Text style={{fontSize:12,color:amount===value?c.blue:c.text,fontWeight:'700'}}>₹{Number(value).toLocaleString('en-IN')}</Text></TouchableOpacity>)}</View>
       <View><Label>Note (optional)</Label><Field value={note} onChangeText={setNote} placeholder="What's this for?" maxLength={50}/></View>
       {isAccountLocked?<Text style={{color:c.red,fontSize:12,lineHeight:18}}>Payments are blocked while this account is locked.</Text>:null}
@@ -697,7 +707,7 @@ export function Details({navigation,route}) {
 }
 
 export function Profile({navigation}) {
-  const {user,setUser,offlineSession,setOfflineSession}=useApp();
+  const {user,offlineSession,clearSession}=useApp();
   const [discoverability,setDiscoverability]=useState(null); const [savingDiscoverability,setSavingDiscoverability]=useState(false); const [discoverabilityMessage,setDiscoverabilityMessage]=useState('');
   useEffect(()=>{
     let active=true;
@@ -710,7 +720,7 @@ export function Profile({navigation}) {
     catch { setDiscoverabilityMessage('Could not update this setting. Check your connection and try again.'); }
     finally { setSavingDiscoverability(false); }
   };
-  const logout=async()=>{await authService.logout();setUser(null);setOfflineSession(false);navigation.getParent()?.reset({index:0,routes:[{name:'Splash'}]});};
+  const logout=async()=>{await clearSession({remoteLogout:true,navigate:true});};
   return <Page><Header title="Profile" right={<TouchableOpacity onPress={()=>navigation.navigate('Settings')} accessibilityRole="button" accessibilityLabel="Open Privacy and Account settings" hitSlop={8} style={{width:44,height:44,borderRadius:22,backgroundColor:c.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:c.cyan,shadowColor:c.navy,shadowOpacity:0.16,shadowRadius:5,shadowOffset:{width:0,height:2},elevation:3}}><Ionicons name="settings-sharp" size={23} color={c.white}/></TouchableOpacity>}/>
     {user?<Card style={{alignItems:'center',gap:9,padding:22}}><Avatar name={user.name} size={68}/><Text style={{color:c.text,fontSize:20,fontWeight:'900'}}>{user.name}</Text><Text style={{color:c.muted,fontSize:13}}>{user.email}</Text>{user.phone?<Text style={{color:c.muted,fontSize:13}}>{user.phone}</Text>:null}</Card>:<EmptyState icon="person-circle-outline" title="Profile unavailable" message="Log in to view your account profile."/>}
     <Card style={{gap:13}}>
@@ -721,9 +731,7 @@ export function Profile({navigation}) {
     </Card>
     <Card style={{gap:17}}>
       <TouchableOpacity onPress={()=>navigation.navigate('Main',{screen:'Wallet'})}><Row icon="card-outline" title="Bank accounts" subtitle="Manage linked accounts" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} /></TouchableOpacity>
-      <Row icon="shield-checkmark-outline" title="Security" subtitle="Account password and privacy" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} />
-      <Row icon="help-circle-outline" title="Help & support" subtitle="Get help with your account" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} />
-      <Row icon="information-circle-outline" title="About MeshPay" subtitle="Offline payment project" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} />
+      <TouchableOpacity onPress={()=>navigation.navigate('Settings')} accessibilityRole="button"><Row icon="shield-checkmark-outline" title="Security" subtitle="Account password and privacy" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} /></TouchableOpacity>
     </Card>
     <TouchableOpacity onPress={logout} style={{height:52,borderRadius:15,backgroundColor:'#FFF0F1',alignItems:'center',justifyContent:'center',flexDirection:'row',gap:8}}><Ionicons name="log-out-outline" size={19} color={c.red}/><Text style={{color:c.red,fontWeight:'800'}}>Log out</Text></TouchableOpacity>
   </Page>;
@@ -741,6 +749,8 @@ export function Settings({navigation}) {
   const [currentDeviceId,setCurrentDeviceId]=useState(null);
   const [registerPassword,setRegisterPassword]=useState('');
   const [customLimit,setCustomLimit]=useState('');
+  const [limitPassword,setLimitPassword]=useState('');
+  const [pendingLimit,setPendingLimit]=useState(null);
   const [confirmLock,setConfirmLock]=useState(false);
   const [confirmDeviceId,setConfirmDeviceId]=useState(null);
   const [unlockPassword,setUnlockPassword]=useState('');
@@ -755,7 +765,7 @@ export function Settings({navigation}) {
   const [deletionError,setDeletionError]=useState('');
   const notificationSupport=notificationsService.isSupported();
 
-  const reloadAccount=async()=>{
+  const reloadAccount=useCallback(async()=>{
     setAccountLoading(true);
     const results=await Promise.allSettled([
       refreshPrivacyAccount(),privacyAccountService.devices(),privacyAccountService.syncStatus(),deviceIdentityService.getIdentity(),
@@ -766,9 +776,9 @@ export function Settings({navigation}) {
     if(results[2].status==='fulfilled')setSyncStatus(results[2].value);
     if(results[3].status==='fulfilled')setCurrentDeviceId(results[3].value.deviceId);
     setAccountLoading(false);
-  };
+  },[refreshPrivacyAccount]);
 
-  useEffect(()=>{notificationsService.getPermission().then(setPermission);reloadAccount();accountDeletionService.status().then(setDeletionRequest).catch(()=>{});},[]);
+  useEffect(()=>{notificationsService.getPermission().then(setPermission);reloadAccount();accountDeletionService.status().then(setDeletionRequest).catch(()=>{});},[reloadAccount]);
   useEffect(()=>{if(deleteCountdown<=0)return;const timer=setTimeout(()=>setDeleteCountdown(value=>Math.max(0,value-1)),1000);return()=>clearTimeout(timer);},[deleteCountdown]);
 
   const openDeleteFlow=()=>{setDeleteAcknowledged(false);setDeleteOtp('');setDeleteChallenge(null);setDeleteStage('confirm');setDeleteModal(true);};
@@ -795,7 +805,7 @@ export function Settings({navigation}) {
 
   const savePrivacy=async patch=>{
     setAccountBusy(true);setMessage('');
-    try { await updatePrivacyAccount(patch);setMessage('Privacy preference saved to your account.'); }
+    try { await updatePrivacyAccount(patch);setMessage('Privacy preference saved to your account.');return true; }
     catch(error) { setMessage(error.message||'Could not save this preference. Reconnect and try again.'); }
     finally { setAccountBusy(false); }
   };
@@ -803,7 +813,18 @@ export function Settings({navigation}) {
   const chooseLimit=value=>{
     const amount=Number(value);
     if(!Number.isFinite(amount)||amount<0||amount>50000)return setMessage('Enter a limit from ₹0 to ₹50,000.');
+    if(amount>Number(privacyAccount?.offlinePaymentLimit||0)){
+      setPendingLimit(amount);
+      setMessage('Enter your password to confirm this limit increase.');
+      return;
+    }
+    setPendingLimit(null);setLimitPassword('');
     savePrivacy({offlinePaymentLimit:amount});
+  };
+  const confirmLimitIncrease=async()=>{
+    if(!limitPassword)return setMessage('Enter your account password to confirm the increase.');
+    const saved=await savePrivacy({offlinePaymentLimit:pendingLimit,password:limitPassword});
+    if(saved){setLimitPassword('');setPendingLimit(null);}
   };
 
   const lockAccount=async()=>{
@@ -924,7 +945,8 @@ export function Settings({navigation}) {
           const selected=Number(privacyAccount.offlinePaymentLimit)===value;
           return <TouchableOpacity key={value} onPress={()=>chooseLimit(value)} disabled={accountBusy} accessibilityRole="radio" accessibilityState={{checked:selected}} style={{paddingVertical:10,paddingHorizontal:13,borderRadius:12,borderWidth:1,borderColor:selected?c.blue:c.line,backgroundColor:selected?c.surface2:c.surface}}><Text style={{color:selected?c.blue:c.text,fontSize:12,fontWeight:'800'}}>{value===0?'Off':`₹${value.toLocaleString('en-IN')}`}</Text></TouchableOpacity>;
         })}</View>
-        <View style={{flexDirection:'row',gap:9,alignItems:'center'}}><TextInput value={customLimit} onChangeText={value=>setCustomLimit(value.replace(/[^0-9.]/g,''))} placeholder="Custom amount" keyboardType="decimal-pad" placeholderTextColor={c.muted} style={{flex:1,minHeight:48,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:12,color:c.text,backgroundColor:c.bg}}/><View style={{width:124}}><Button title="Save custom" variant="outline" disabled={accountBusy||!customLimit} onPress={()=>chooseLimit(customLimit)}/></View></View>
+        <View style={{flexDirection:'row',gap:9,alignItems:'center'}}><TextInput value={customLimit} onChangeText={value=>setCustomLimit(normalizeDecimalInput(value))} maxLength={72} placeholder="Custom amount" keyboardType="decimal-pad" placeholderTextColor={c.muted} style={{flex:1,minHeight:48,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:12,color:c.text,backgroundColor:c.bg}}/><View style={{width:124}}><Button title="Save custom" variant="outline" disabled={accountBusy||!customLimit} onPress={()=>chooseLimit(customLimit)}/></View></View>
+        {pendingLimit!==null?<View style={{gap:9}}><Text style={{color:c.muted,fontSize:12}}>Confirm the increase to ₹{pendingLimit.toLocaleString('en-IN')} with your password.</Text><TextInput value={limitPassword} onChangeText={setLimitPassword} placeholder="Account password" secureTextEntry autoCapitalize="none" maxLength={72} placeholderTextColor={c.muted} style={{minHeight:48,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:12,color:c.text,backgroundColor:c.bg}}/><Button title="Confirm limit increase" variant="outline" disabled={accountBusy||!limitPassword} onPress={confirmLimitIncrease}/></View>:null}
         <View style={{backgroundColor:c.surface2,borderRadius:13,padding:13,gap:5}}><Text style={{color:c.text,fontWeight:'800'}}>Last 24 hours</Text><Text style={{color:c.muted,fontSize:12}}>Limit: ₹{Number(privacyAccount.offlinePaymentLimit||0).toLocaleString('en-IN')}  ·  Used: ₹{Number(privacyAccount.offlineSpentLast24Hours||0).toLocaleString('en-IN')}</Text><Text style={{color:c.blue,fontWeight:'900'}}>Remaining allowance: ₹{Number(privacyAccount.remainingOfflineAllowance||0).toLocaleString('en-IN')}</Text></View>
       </Card>
     </View>:null}
@@ -936,7 +958,7 @@ export function Settings({navigation}) {
     </Card>:null}
     <View style={{gap:11}}>
       <SectionTitle title="Trusted devices"/>
-      {currentDeviceId&&!devices.some(device=>device.deviceId===currentDeviceId)?<Card style={{gap:10}}><Row icon="shield-checkmark-outline" title="Register this device" subtitle="This existing session needs a fresh password check before it can be managed"/><TextInput value={registerPassword} onChangeText={setRegisterPassword} placeholder="Account password" placeholderTextColor={c.muted} secureTextEntry autoCapitalize="none" style={{minHeight:48,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:12,color:c.text,backgroundColor:c.bg}}/><Button title={accountBusy?'Verifying…':'Verify and register device'} disabled={accountBusy||!registerPassword} onPress={registerCurrentDevice}/></Card>:null}
+      {currentDeviceId&&!devices.some(device=>device.deviceId===currentDeviceId)?<Card style={{gap:10}}><Row icon="shield-checkmark-outline" title="Register this device" subtitle="This existing session needs a fresh password check before it can be managed"/><TextInput value={registerPassword} onChangeText={setRegisterPassword} placeholder="Account password" placeholderTextColor={c.muted} secureTextEntry autoCapitalize="none" maxLength={72} style={{minHeight:48,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:12,color:c.text,backgroundColor:c.bg}}/><Button title={accountBusy?'Verifying…':'Verify and register device'} disabled={accountBusy||!registerPassword} onPress={registerCurrentDevice}/></Card>:null}
       {devices.length?devices.map(device=><Card key={device.deviceId} style={{gap:11}}>
         <Row icon="phone-portrait-outline" title={device.deviceName} subtitle={`${device.platform.toUpperCase()} · ${device.revokedAt?'Revoked':`Last active ${new Date(device.lastActiveAt).toLocaleString()}`}`}/>
         <Text selectable style={{color:c.muted,fontSize:11}}>Device ID: {device.deviceId}</Text>
@@ -950,7 +972,7 @@ export function Settings({navigation}) {
       {lockSyncPending?<Text style={{color:'#94650D',fontSize:12,lineHeight:18}}>Local emergency lock is active. Server sync will retry automatically when this device can reach your account.</Text>:null}
       {isAccountLocked?<>
         <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>To unlock, enter your account password. This is checked by the server; local state is cleared only after it confirms the unlock.</Text>
-        <TextInput value={unlockPassword} onChangeText={setUnlockPassword} placeholder="Account password" placeholderTextColor={c.muted} secureTextEntry autoCapitalize="none" style={{minHeight:50,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:13,color:c.text,backgroundColor:c.bg}}/>
+        <TextInput value={unlockPassword} onChangeText={setUnlockPassword} placeholder="Account password" placeholderTextColor={c.muted} secureTextEntry autoCapitalize="none" maxLength={72} style={{minHeight:50,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:13,color:c.text,backgroundColor:c.bg}}/>
         <Button title={accountBusy?'Verifying…':'Verify password and unlock'} disabled={accountBusy||!unlockPassword} onPress={unlockAccount}/>
       </>:confirmLock?<View style={{gap:10,backgroundColor:c.surface2,padding:12,borderRadius:12}}><Text style={{color:c.text,fontSize:13,lineHeight:19}}>Confirm emergency lock. This immediately blocks payment actions on this device and asks the server to lock your account.</Text><View style={{flexDirection:'row',gap:8}}><View style={{flex:1}}><Button title="Cancel" variant="secondary" disabled={accountBusy} onPress={()=>setConfirmLock(false)}/></View><View style={{flex:1}}><Button title={accountBusy?'Locking…':'Confirm lock'} variant="outline" disabled={accountBusy} onPress={lockAccount}/></View></View></View>:<Button title="Emergency lock account" icon="lock-closed-outline" variant="outline" disabled={accountBusy} onPress={()=>setConfirmLock(true)}/>}
     </Card>
@@ -1066,7 +1088,7 @@ export function BankAccounts() {
     try { setMobile(normalizeMobileNumber(user?.phone)); } catch { setMobile(''); }
   },[user?.phone]);
 
-  const loadAccounts=async()=>{
+  const loadAccounts=useCallback(async()=>{
     setLoading(true);
     try {
       const result=await bankAccountsService.list();
@@ -1075,12 +1097,12 @@ export function BankAccounts() {
       setMessage('Could not load linked bank accounts. Check your connection and try again.');
       setMessageTone('error');
     } finally { setLoading(false); }
-  };
-  const loadIntegrationStatus=async()=>{
+  },[]);
+  const loadIntegrationStatus=useCallback(async()=>{
     try { setIntegrationStatus(await bankAccountsService.integrationStatus()); }
     catch { setIntegrationStatus(null); }
-  };
-  useEffect(()=>{loadAccounts();loadIntegrationStatus();},[]);
+  },[]);
+  useEffect(()=>{loadAccounts();loadIntegrationStatus();},[loadAccounts,loadIntegrationStatus]);
 
   const otpReady=integrationStatus?.mobileOtp?.status==='CONFIGURED_NOT_LIVE_VALIDATED';
   const [otpDeliveryMode,setOtpDeliveryMode]=useState(
@@ -1141,7 +1163,10 @@ export function BankAccounts() {
         ? `The code was sent to your registered email${result?.maskedDestination?` (${result.maskedDestination})`:''}.`
         : 'The SMS provider accepted the request. Enter the code sent to your registered mobile.');
       setMessageTone('success');
-    } catch(error) { showError(error); }
+    } catch(error) {
+      if(error?.status===410||error?.status===429){setChallenge(null);setOtp('');setSecondsRemaining(0);}
+      showError(error);
+    }
     finally { setBusy(false); }
   };
   const verifyOtp=async()=>{
@@ -1156,7 +1181,10 @@ export function BankAccounts() {
       setStage('bank');setMessage(otpDeliveryMode==='EMAIL'
         ? 'Registered email verified.' : 'Mobile number verified by the SMS provider.');
       setMessageTone('success');
-    } catch(error) { showError(error); }
+    } catch(error) {
+      if(error?.status===410||error?.status===429){setChallenge(null);setOtp('');setSecondsRemaining(0);}
+      showError(error);
+    }
     finally { setBusy(false); }
   };
   const createAccount=async()=>{
@@ -1165,6 +1193,10 @@ export function BankAccounts() {
     const confirmedDigits=confirmAccountNumber.replace(/\D/g,'');
     if(!bankName) {
       setMessage('Choose a supported bank and enter its name if selecting Other.');
+      setMessageTone('error');return;
+    }
+    if(selectedBank==='Other supported bank'&&!/^[A-Za-z0-9 .&()/-]{2,100}$/.test(bankName)) {
+      setMessage('Enter a supported bank name using 2 to 100 letters, numbers, spaces, or . & ( ) / - characters.');
       setMessageTone('error');return;
     }
     if(!holderName.trim()) {
@@ -1211,8 +1243,7 @@ export function BankAccounts() {
         setPendingAccountId(createdAccountId);
         setStage('details');
         await loadAccounts();
-        setMessage('Verification did not complete. Check the provider status before retrying.');
-        setMessageTone('error');
+        showError(error);
       } else {
         await loadAccounts();
         showError(error);
@@ -1238,6 +1269,10 @@ export function BankAccounts() {
         :result.verificationStatus==='PENDING'?'info':'error');
     } catch(error) {
       setAccountNumber('');
+      if(error?.status===409||error?.status===404||error?.timedOut){
+        await loadAccounts();
+        setPendingAccountId(account.id);setSelectedBank(account.bankName);setStage('details');
+      }
       showError(error);
     }
     finally { setBusy(false); }
@@ -1343,7 +1378,12 @@ export function BankAccounts() {
         {!bankVerificationReady?<Text style={{color:c.muted,fontSize:12,lineHeight:18}}>Cashfree Secure ID bank verification is unavailable until its Secure ID API keys, server encryption key, and approved environment are configured.</Text>:null}
         {integrationStatus?.bankVerification?.status==='SANDBOX_CONFIGURED_NOT_LIVE'?<Text style={{color:c.muted,fontSize:12,lineHeight:18}}>Sandbox responses are test-only and will remain Pending; they cannot verify a real account.</Text>:null}
         {selectedBank==='Other supported bank'?<><Label>Supported bank name</Label><Field value={otherBankName} onChangeText={setOtherBankName} placeholder="Enter bank name" maxLength={100}/></>:null}
-        <Button title="Continue" disabled={!selectedBank} onPress={()=>{setStage('details');setMessage('');}}/>
+        <Button title="Continue" disabled={!selectedBank} onPress={()=>{
+          if(selectedBank==='Other supported bank'&&!/^[A-Za-z0-9 .&()/-]{2,100}$/.test(otherBankName.trim())){
+            setMessage('Enter a supported bank name using 2 to 100 letters, numbers, spaces, or . & ( ) / - characters.');setMessageTone('error');return;
+          }
+          setStage('details');setMessage('');
+        }}/>
       </>:null}
       {stage==='details'?<>
         <Text style={{color:c.muted}}>Selected bank: {selectedBank==='Other supported bank'?otherBankName:selectedBank}</Text>

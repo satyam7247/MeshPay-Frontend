@@ -49,6 +49,12 @@ async function persistSession(result) {
 }
 
 export const authService = {
+  async clearLocalSession() {
+    ++authGeneration;
+    apiClient.setAccessToken(null);
+    await deleteStoredSession().catch(()=>{});
+  },
+
   async login(credentials) {
     const generation=++authGeneration;
     if (!apiClient.isConfigured) throw new Error('Account service is not connected.');
@@ -113,13 +119,10 @@ export const authService = {
   },
 
   async logout() {
-    ++authGeneration;
     try { await notificationsService.registerPushToken(false); } catch {}
-    const tokenPresent=true;
     try {
-      if (tokenPresent) await apiClient.post('/api/auth/logout', {});
+      if (apiClient.hasAccessToken) await apiClient.post('/api/auth/logout', {});
     } catch {}
-    apiClient.setAccessToken(null);
-    await deleteStoredSession().catch(()=>{});
+    await this.clearLocalSession();
   },
 };

@@ -12,6 +12,8 @@ import { notificationsService } from '../services/notificationsService';
 import { offlineTransactionLedgerService } from '../services/offlineTransactionLedgerService';
 import { meshService } from '../services/meshService';
 import { setColorScheme } from '../theme/colors';
+import { apiClient } from '../services/apiClient';
+import { navigationRef } from '../navigation/navigationRef';
 
 const Ctx = createContext(null);
 
@@ -27,6 +29,9 @@ export function AppProvider({children}) {
   const [localAccountLocked,setLocalAccountLocked]=useState(false);
   const [lockSyncPending,setLockSyncPending]=useState(false);
   const settingsRef=useRef(settings);
+  const stateEpoch=useRef(0);
+  const accountSyncTimer=useRef(null);
+  const notificationTimer=useRef(null);
   const [systemColorScheme,setSystemColorScheme]=useState(Appearance.getColorScheme()==='dark'?'dark':'light');
 
   useEffect(()=>{
@@ -34,20 +39,50 @@ export function AppProvider({children}) {
   },[user?.id]);
 
   const refreshTransactions=useCallback(async(upiId)=>{
-    try { const items=await transactionsService.list(upiId);setTransactions(items); }
-    catch { setTransactions([]); }
+    const epoch=stateEpoch.current;
+    try { const items=await transactionsService.list(upiId);if(epoch===stateEpoch.current)setTransactions(items); }
+    catch { if(epoch===stateEpoch.current)setTransactions([]); }
   },[]);
+
+  const clearSession=useCallback(async({remoteLogout=false,navigate=true}={})=>{
+    stateEpoch.current+=1;
+    if(accountSyncTimer.current){clearInterval(accountSyncTimer.current);accountSyncTimer.current=null;}
+    if(notificationTimer.current){clearInterval(notificationTimer.current);notificationTimer.current=null;}
+    if(remoteLogout)await authService.logout();
+    else await authService.clearLocalSession();
+    setUser(null);
+    setTransactions([]);
+    setPrivacyAccount(null);
+    setUnreadNotificationCount(0);
+    setFilter('All');
+    setOfflineSession(false);
+    setLocalAccountLocked(false);
+    setLockSyncPending(false);
+    notificationsService.setBadgeCount(0);
+    if(navigate&&navigationRef.isReady())navigationRef.reset({index:0,routes:[{name:'Splash'}]});
+  },[]);
+
+  const handleUnauthorized=useCallback(()=>{
+    void clearSession({navigate:true});
+  },[clearSession]);
+
+  useEffect(()=>{
+    apiClient.setUnauthorizedHandler(handleUnauthorized);
+    return()=>apiClient.setUnauthorizedHandler(null);
+  },[handleUnauthorized]);
 
   const refreshNotificationCount=useCallback(async()=>{
     if(!user?.id||offlineSession){setUnreadNotificationCount(0);return 0;}
+    const epoch=stateEpoch.current;
     try {
       const result=await notificationsApiService.unreadCount();
+      if(epoch!==stateEpoch.current)return null;
       const count=Math.max(0,Number(result?.unreadCount)||0);
       setUnreadNotificationCount(count);
       await notificationsService.setBadgeCount(count);
       return count;
     } catch { return null; }
-  },[user?.id,user?.upiId,offlineSession]);
+  },[user?.id,offlineSession]);
 
   useEffect(()=>{
     preferencesService.load().then(saved=>{
@@ -82,9 +117,10 @@ export function AppProvider({children}) {
     if(!user?.id||offlineSession)return undefined;
     refreshNotificationCount();
     const timer=setInterval(refreshNotificationCount,30000);
+    notificationTimer.current=timer;
     const received=notificationsService.addReceivedListener(()=>refreshNotificationCount());
     const state=AppState.addEventListener('change',next=>{if(next==='active')refreshNotificationCount();});
-    return ()=>{clearInterval(timer);received?.remove?.();state.remove();};
+    return ()=>{clearInterval(timer);if(notificationTimer.current===timer)notificationTimer.current=null;received?.remove?.();state.remove();};
   },[user?.id,offlineSession,refreshNotificationCount]);
 
   useEffect(()=>{
@@ -101,22 +137,29 @@ export function AppProvider({children}) {
   },[settings,systemColorScheme]);
 
   const refreshPrivacyAccount=useCallback(async(accountUserId=user?.id)=>{
+    const epoch=stateEpoch.current;
     const value=await privacyAccountService.get();
-    setPrivacyAccount(value);
-    await privacyAccountCacheService.set(accountUserId,value).catch(()=>{});
+    if(epoch===stateEpoch.current){
+      setPrivacyAccount(value);
+      await privacyAccountCacheService.set(accountUserId,value).catch(()=>{});
+    }
     return value;
   },[user?.id]);
 
   const updatePrivacyAccount=useCallback(async patch=>{
+    const epoch=stateEpoch.current;
     const current=privacyAccount;
     const value=await privacyAccountService.update({
       offlinePaymentLimit:patch.offlinePaymentLimit??current?.offlinePaymentLimit??0,
       hideBalance:patch.hideBalance??current?.hideBalance??false,
       hideTransactionDetails:patch.hideTransactionDetails??current?.hideTransactionDetails??false,
+      ...(patch.password?{password:patch.password}:{}),
     });
-    setPrivacyAccount(value);
-    await privacyAccountCacheService.set(user?.id,value).catch(()=>{});
-    if(patch.hideTransactionDetails!==undefined)await refreshTransactions(user?.upiId);
+    if(epoch===stateEpoch.current){
+      setPrivacyAccount(value);
+      await privacyAccountCacheService.set(user?.id,value).catch(()=>{});
+      if(patch.hideTransactionDetails!==undefined)await refreshTransactions(user?.upiId);
+    }
     return value;
   },[privacyAccount,user?.id,refreshTransactions,user?.upiId]);
 
@@ -199,12 +242,13 @@ export function AppProvider({children}) {
     };
     syncAccount();
     const timer=setInterval(syncAccount,15000);
+    accountSyncTimer.current=timer;
     const appState=AppState.addEventListener('change',next=>{if(next==='active')syncAccount();});
-    return()=>{active=false;clearInterval(timer);appState.remove();};
-  },[user?.id,offlineSession]);
+    return()=>{active=false;clearInterval(timer);if(accountSyncTimer.current===timer)accountSyncTimer.current=null;appState.remove();};
+  },[user?.id,user?.upiId,offlineSession]);
 
-  const value=useMemo(()=>({user,setUser,transactions,setTransactions,refreshTransactions,filter,setFilter,offlineSession,setOfflineSession,isRestoringSession,settings,updateSettings,resolvedTheme,privacyAccount,refreshPrivacyAccount,updatePrivacyAccount,isAccountLocked,lockSyncPending,setAccountLockLocally,restoreLocalAccountLock,markAccountLockSynchronized,unreadNotificationCount,refreshNotificationCount}),
-    [user,transactions,refreshTransactions,filter,offlineSession,isRestoringSession,settings,updateSettings,resolvedTheme,privacyAccount,refreshPrivacyAccount,updatePrivacyAccount,isAccountLocked,lockSyncPending,setAccountLockLocally,restoreLocalAccountLock,markAccountLockSynchronized,unreadNotificationCount,refreshNotificationCount]);
+  const value=useMemo(()=>({user,setUser,transactions,setTransactions,refreshTransactions,filter,setFilter,offlineSession,setOfflineSession,isRestoringSession,settings,updateSettings,resolvedTheme,privacyAccount,refreshPrivacyAccount,updatePrivacyAccount,isAccountLocked,lockSyncPending,setAccountLockLocally,restoreLocalAccountLock,markAccountLockSynchronized,unreadNotificationCount,refreshNotificationCount,clearSession}),
+    [user,transactions,refreshTransactions,filter,offlineSession,isRestoringSession,settings,updateSettings,resolvedTheme,privacyAccount,refreshPrivacyAccount,updatePrivacyAccount,isAccountLocked,lockSyncPending,setAccountLockLocally,restoreLocalAccountLock,markAccountLockSynchronized,unreadNotificationCount,refreshNotificationCount,clearSession]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
