@@ -149,6 +149,17 @@ export function AppProvider({children}) {
     return()=>apiClient.setUnauthorizedHandler(null);
   },[handleUnauthorized]);
 
+  const handleAppLockRequired=useCallback(()=>{
+    if(!sessionActive.current)return;
+    setAppLock(current=>({...current,enabled:true}));
+    setAppLocked(true);
+  },[]);
+
+  useEffect(()=>{
+    apiClient.setAppLockRequiredHandler(handleAppLockRequired);
+    return()=>apiClient.setAppLockRequiredHandler(null);
+  },[handleAppLockRequired]);
+
   const refreshNotificationCount=useCallback(async()=>{
     if(!user?.id||!sessionActive.current||offlineSession||appLocked)return 0;
     const epoch=stateEpoch.current;

@@ -16,6 +16,7 @@ export function AppLockSetupScreen({navigation,route}) {
   const [password,setPassword]=useState('');
   const [confirmation,setConfirmation]=useState('');
   const [currentPassword,setCurrentPassword]=useState('');
+  const [accountPassword,setAccountPassword]=useState('');
   const [error,setError]=useState('');
   const [busy,setBusy]=useState(false);
 
@@ -45,11 +46,16 @@ export function AppLockSetupScreen({navigation,route}) {
       setConfirmation('');
       return setError('Passwords do not match. Enter the same six characters again.');
     }
+    setStage('account-password');
+  };
+  const enable=async()=>{
+    setError('');
+    if(!accountPassword)return setError('Enter your MeshPay account password to confirm.');
     setBusy(true);
     try {
-      const result=await appLockService.enable(type,password,user.id);
+      const result=await appLockService.enable(type,password,accountPassword,user.id);
       updateAppLockState(result,{locked:false});
-      setPassword('');setConfirmation('');setStage('success');
+      setPassword('');setConfirmation('');setAccountPassword('');setStage('success');
     } catch(e) {setError(e.message||'App Lock could not be enabled.');}
     finally {setBusy(false);}
   };
@@ -100,8 +106,8 @@ export function AppLockSetupScreen({navigation,route}) {
   return <Page>
     <Header title={mode==='disable'?'Turn off App Lock':'Set up App Lock'} back onBack={()=>navigation.goBack()}/>
     <View style={{gap:7}}>
-      <Text style={{fontSize:25,fontWeight:'900',color:c.text}}>{stage==='type'?'Choose a password type':stage==='create'?'Create Your Screen Lock':stage==='confirm'?'Confirm Your Screen Lock':stage==='success'?'App Lock is ready':'Verify your screen lock'}</Text>
-      <Text style={{fontSize:13,color:c.muted,lineHeight:20}}>{stage==='type'?'Choose one six-character format. You can change it later by resetting your screen lock.':stage==='success'?'App Lock Enabled Successfully! Your app will lock whenever it moves to the background.':mode==='disable'?'Enter your existing screen lock password before turning App Lock off.':'Your screen lock password is separate from your MeshPay account password.'}</Text>
+      <Text style={{fontSize:25,fontWeight:'900',color:c.text}}>{stage==='type'?'Choose a password type':stage==='create'?'Create Your Screen Lock':stage==='confirm'?'Confirm Your Screen Lock':stage==='account-password'?'Confirm your account password':stage==='success'?'App Lock is ready':'Verify your screen lock'}</Text>
+      <Text style={{fontSize:13,color:c.muted,lineHeight:20}}>{stage==='type'?'Choose one six-character format. You can change it later by resetting your screen lock.':stage==='success'?'App Lock Enabled Successfully! Your app will lock whenever it moves to the background.':stage==='account-password'?'Enter your MeshPay account password to enable App Lock.':'Your screen lock password is separate from your MeshPay account password.'}</Text>
     </View>
     {stage==='type'?<View style={{gap:12}}>
       {[{id:'numeric',icon:'keypad-outline',title:'Numeric Password',subtitle:'Exactly 6 digits · 0–9'},{id:'alphabetic',icon:'text-outline',title:'Alphabetic Password',subtitle:'Exactly 6 English letters · A–Z'}].map(option=><TouchableOpacity key={option.id} onPress={()=>{setType(option.id);setPassword('');setStage('create');setError('');}} accessibilityRole="button" style={{backgroundColor:c.surface,borderWidth:1,borderColor:c.line,borderRadius:18,padding:17,flexDirection:'row',alignItems:'center',gap:13}}><Ionicons name={option.icon} size={22} color={c.blue}/><View style={{flex:1,gap:4}}><Text style={{color:c.text,fontWeight:'800',fontSize:15}}>{option.title}</Text><Text style={{color:c.muted,fontSize:12}}>{option.subtitle}</Text></View><Ionicons name="chevron-forward" size={18} color={c.muted}/></TouchableOpacity>)}
@@ -111,6 +117,10 @@ export function AppLockSetupScreen({navigation,route}) {
       <View style={{flexDirection:'row',justifyContent:'center',gap:9}}>{Array.from({length:6},(_,index)=><View key={index} style={{width:13,height:13,borderRadius:7,backgroundColor:index<activeValue.length?c.blue:c.surface2,borderWidth:1,borderColor:c.line}}/>)}</View>
       <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>{stage==='create'?'Enter six characters. The confirmation step will open automatically.':busy?'Saving your App Lock…':'Enter the same six characters again. App Lock saves automatically when they match.'}</Text>
       {stage==='create'?<Button title="Continue" icon="arrow-forward" disabled={busy||activeValue.length!==6} onPress={submitPassword}/>:null}
+    </Card>:null}
+    {stage==='account-password'?<Card style={{gap:13}}>
+      <View><Label>MeshPay account password</Label><Field value={accountPassword} onChangeText={setAccountPassword} placeholder="Enter your account password" secureTextEntry maxLength={72} autoCapitalize="none" autoCorrect={false} returnKeyType="done"/></View>
+      <Button title={busy?'Enabling App Lock…':'Enable App Lock'} icon="lock-closed-outline" disabled={busy||!accountPassword} onPress={enable}/>
     </Card>:null}
     {stage==='disable'?<Card style={{gap:13}}>
       <View><Label>Current screen lock password</Label><Field value={currentPassword} onChangeText={changeCurrentPassword} placeholder="Enter your screen lock password" secureTextEntry keyboardType={appLock.type==='numeric'?'number-pad':'default'} autoCapitalize="none" autoCorrect={false} maxLength={6}/></View>

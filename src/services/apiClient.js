@@ -1,6 +1,7 @@
 const baseUrl = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/+$/, '');
 let accessToken = null;
 let unauthorizedHandler = null;
+let appLockRequiredHandler = null;
 
 export class ApiClientError extends Error {
   constructor(message, { status=null, networkFailure=false, timedOut=false }={}) {
@@ -44,6 +45,9 @@ async function request(path, { method='GET', body, timeoutMs=9000 } = {}) {
     try { data = JSON.parse(raw); } catch { data = { message:raw }; }
   }
   if (!response.ok) {
+    if (response.status === 423 && data?.code === 'APP_LOCK_REQUIRED' && appLockRequiredHandler) {
+      try { appLockRequiredHandler(); } catch {}
+    }
     // An expired or revoked token on a protected call ends the session everywhere.
     // /api/auth/* calls handle their own 401 (wrong password, restore-session).
     if (response.status === 401 && accessToken && !path.startsWith('/api/auth/') && unauthorizedHandler) {
@@ -60,6 +64,7 @@ export const apiClient = {
   get hasAccessToken() { return Boolean(accessToken); },
   setAccessToken(token) { accessToken = token || null; },
   setUnauthorizedHandler(handler) { unauthorizedHandler = typeof handler === 'function' ? handler : null; },
+  setAppLockRequiredHandler(handler) { appLockRequiredHandler = typeof handler === 'function' ? handler : null; },
   get(path, options) { return request(path, options); },
   post(path, body, options) { return request(path, { method:'POST', body, ...options }); },
   put(path, body, options) { return request(path, { method:'PUT', body, ...options }); },

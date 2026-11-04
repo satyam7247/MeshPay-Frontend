@@ -37,8 +37,8 @@ export const appLockService={
     await writeCache(userId,value);
     return value;
   },
-  async enable(passwordType,password,userId) {
-    const value=await apiClient.post('/api/app-lock/enable',{passwordType,password});
+  async enable(passwordType,password,accountPassword,userId) {
+    const value=await apiClient.post('/api/app-lock/enable',{passwordType,password,accountPassword});
     await writeCache(userId,value);
     return value;
   },
