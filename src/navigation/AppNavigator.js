@@ -9,6 +9,8 @@ import {
 } from '../screens/Screens';
 import { useApp } from '../context/AppContext';
 import { ActivityIndicator, View } from 'react-native';
+import { AppLockScreen } from '../screens/AppLockScreen';
+import { AppLockSetupScreen } from '../screens/AppLockSetupScreen';
 
 const Stack=createNativeStackNavigator();
 const Tabs=createBottomTabNavigator();
@@ -38,8 +40,9 @@ function MainTabs({navigation}) {
 }
 
 export default function AppNavigator() {
-  const {user}=useApp();
-  return <Stack.Navigator initialRouteName="Splash" screenOptions={{
+  const {user,appLock,appLocked,appLockLoading}=useApp();
+  if(user&&(appLockLoading||(appLock.enabled&&appLocked)))return <Stack.Navigator screenOptions={{headerShown:false,gestureEnabled:false,contentStyle:{backgroundColor:c.bg}}}><Stack.Screen name="AppLock" component={AppLockScreen}/></Stack.Navigator>;
+  return <Stack.Navigator initialRouteName={user?'Main':'Splash'} screenOptions={{
     headerShown:false,
     contentStyle:{backgroundColor:c.bg},
     animation:'slide_from_right',
@@ -60,5 +63,6 @@ export default function AppNavigator() {
     <Stack.Screen name="Request" component={Request}/>
     {user?<Stack.Screen name="Settings" component={Settings}/>:null}
     {user?<Stack.Screen name="Notifications" component={Notifications}/>:null}
+    {user?<Stack.Screen name="AppLockSetup" component={AppLockSetupScreen}/>:null}
   </Stack.Navigator>;
 }

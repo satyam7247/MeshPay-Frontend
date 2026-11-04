@@ -28,7 +28,7 @@ function NotificationBell() {
   return <Animated.View style={{transform:[{scale}]}}>
     <TouchableOpacity onPress={()=>navigation.navigate('Notifications')} accessibilityRole="button" accessibilityLabel={label} hitSlop={7} style={s.notificationBell}>
       <Ionicons name="notifications-outline" size={22} color={c.text}/>
-      {unreadNotificationCount>0?<View style={s.notificationBadge}><Text style={s.notificationBadgeText}>{unreadNotificationCount>99?'99+':unreadNotificationCount}</Text></View>:null}
+      {unreadNotificationCount>0?<View style={[s.notificationBadge,{backgroundColor:c.dangerButton,borderColor:c.surface}]}><Text style={s.notificationBadgeText}>{unreadNotificationCount>99?'99+':unreadNotificationCount}</Text></View>:null}
     </TouchableOpacity>
   </Animated.View>;
 }
@@ -36,36 +36,36 @@ function NotificationBell() {
 export function Header({title,back,onBack,right}) {
   return <View style={s.header}>
     {back?<TouchableOpacity onPress={onBack} accessibilityRole="button" accessibilityLabel="Go back" style={s.back}><Ionicons name="arrow-back" size={22} color={c.text}/></TouchableOpacity>:null}
-    <Text style={s.title}>{title}</Text><View style={s.headerActions}><NotificationBell/>{right||null}{!right&&!title?<View style={{width:8}}/>:null}</View>
+    <Text style={[s.title,{color:c.text}]}>{title}</Text><View style={s.headerActions}><NotificationBell/>{right||null}{!right&&!title?<View style={{width:8}}/>:null}</View>
   </View>;
 }
 
 export function Button({title,onPress,variant='primary',icon,disabled,style}) {
-  const color=variant==='danger'?c.red:variant==='green'?c.green:variant==='secondary'?c.surface2:variant==='outline'?c.surface:c.navy;
+  const color=variant==='danger'?c.dangerButton:variant==='green'?c.successButton:variant==='secondary'?c.surface2:variant==='outline'?c.surface:c.navy;
   const ink=variant==='outline'?c.blue:variant==='secondary'?c.text:c.white;
   return <TouchableOpacity disabled={disabled} activeOpacity={.82} onPress={onPress} style={[s.button,{backgroundColor:color,borderWidth:variant==='outline'||variant==='secondary'?1:0,borderColor:variant==='outline'?c.blue:c.line},style,disabled&&{opacity:.5}]}>
     {icon?<Ionicons name={icon} size={18} color={ink}/>:null}<Text style={[s.buttonText,{color:ink}]}>{title}</Text>
   </TouchableOpacity>;
 }
 
-export function Card({children,style}) { return <View style={[s.card,style]}>{children}</View>; }
-export function Label({children}) { return <Text style={s.label}>{children}</Text>; }
+export function Card({children,style}) { return <View style={[s.card,{backgroundColor:c.surface,borderColor:c.line},style]}>{children}</View>; }
+export function Label({children}) { return <Text style={[s.label,{color:c.muted}]}>{children}</Text>; }
 
-export function Avatar({name,size=46,color=c.blue}) {
+export function Avatar({name,size=46,color=c.accentButton}) {
   const initial=String(name||'').trim().slice(0,1).toUpperCase();
-  return <View style={[s.avatar,{width:size,height:size,borderRadius:size/2,backgroundColor:color}]}>{initial?<Text style={{color:c.white,fontSize:size*.42,fontWeight:'800'}}>{initial}</Text>:<Ionicons name="person" size={size*.46} color={c.white}/>}</View>;
+  return <View style={[s.avatar,{width:size,height:size,borderRadius:size/2,backgroundColor:color}]}>{initial?<Text style={{color:color===c.accentButton?c.accentOn:c.white,fontSize:size*.42,fontWeight:'800'}}>{initial}</Text>:<Ionicons name="person" size={size*.46} color={color===c.accentButton?c.accentOn:c.white}/>}</View>;
 }
 
-export function Field({style,...props}) { return <TextInput placeholderTextColor={c.muted} selectionColor={c.blue} style={[s.field,style]} {...props}/>; }
+export function Field({style,...props}) { return <TextInput placeholderTextColor={c.muted} selectionColor={c.blue} style={[s.field,{backgroundColor:c.surface,borderColor:c.line,color:c.text},style]} {...props}/>; }
 
 export function Badge({children,tone='blue'}) {
-  const color=tone==='green'?c.green:tone==='amber'?'#A36A13':tone==='red'?c.red:c.blue;
-  const bg=tone==='amber'?'#FFF5DF':tone==='red'?'#FFF0F1':tone==='green'?'#E9F8F1':'#EAF2FF';
+  const color=tone==='green'?c.green:tone==='amber'?c.warning:tone==='red'?c.red:c.infoText;
+  const bg=tone==='amber'?c.warningSurface:tone==='red'?c.dangerSurface:tone==='green'?c.successSurface:c.infoSurface;
   return <View style={[s.badge,{backgroundColor:bg}]}><Text style={{fontSize:11,color,fontWeight:'800'}}>{children}</Text></View>;
 }
 
 export function SectionTitle({title,action,onAction}) {
-  return <View style={s.sectionHead}><Text style={s.section}>{title}</Text>{action?<TouchableOpacity onPress={onAction}><Text style={{color:c.blue,fontWeight:'800',fontSize:12}}>{action}</Text></TouchableOpacity>:null}</View>;
+  return <View style={s.sectionHead}><Text style={[s.section,{color:c.text}]}>{title}</Text>{action?<TouchableOpacity onPress={onAction}><Text style={{color:c.blue,fontWeight:'800',fontSize:12}}>{action}</Text></TouchableOpacity>:null}</View>;
 }
 
 const s=StyleSheet.create({
@@ -73,7 +73,7 @@ const s=StyleSheet.create({
   header:{height:48,flexDirection:'row',alignItems:'center',gap:10,marginBottom:2},
   headerActions:{flexDirection:'row',alignItems:'center',gap:8},
   notificationBell:{width:40,height:40,borderRadius:20,alignItems:'center',justifyContent:'center'},
-  notificationBadge:{position:'absolute',top:0,right:-1,minWidth:18,height:18,borderRadius:9,backgroundColor:'#D9364F',alignItems:'center',justifyContent:'center',paddingHorizontal:4,borderWidth:1,borderColor:c.surface},
+  notificationBadge:{position:'absolute',top:0,right:-1,minWidth:18,height:18,borderRadius:9,alignItems:'center',justifyContent:'center',paddingHorizontal:4,borderWidth:1},
   notificationBadgeText:{color:'#FFFFFF',fontSize:10,fontWeight:'900'},
   back:{width:34,height:38,alignItems:'flex-start',justifyContent:'center'},
   title:{fontSize:19,fontWeight:'900',color:c.text,flex:1},

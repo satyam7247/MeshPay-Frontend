@@ -17,7 +17,7 @@ function AppShell() {
       if(user?.id&&navigationRef.isReady())navigationRef.navigate('Notifications');
     });
     return()=>response?.remove?.();
-  },[user?.id,navigationRef]);
+  },[user?.id]);
   return <NavigationContainer ref={navigationRef} theme={theme}><StatusBar style={resolvedTheme==='dark'?'light':'dark'}/><AppNavigator/></NavigationContainer>;
 }
 

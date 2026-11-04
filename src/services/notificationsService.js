@@ -67,7 +67,12 @@ export const notificationsService={
   async registerPushToken(enabled,soundOn=soundEnabled) {
     soundEnabled=Boolean(soundOn);
     if(!nativePushSupported())return {registered:false,reason:'native-push-unavailable'};
-    if(pushRegistrationTask)return pushRegistrationTask;
+    if(pushRegistrationTask){
+      const pending=pushRegistrationTask;
+      if(enabled)return pending;
+      await pending.catch(()=>{});
+      if(pushRegistrationTask)return this.registerPushToken(false,soundEnabled);
+    }
     pushRegistrationTask=(async()=>{
       if(!enabled&&registeredToken) {
         await notificationsApiService.savePushToken(registeredToken,false,soundEnabled);

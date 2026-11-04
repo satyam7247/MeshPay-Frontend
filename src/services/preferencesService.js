@@ -2,7 +2,8 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 const KEY = 'meshpay.preferences.v1';
-const DEFAULTS = { theme: 'system', notificationsEnabled: false, notificationSoundEnabled: true };
+const DEFAULTS = { theme: 'light', notificationsEnabled: false, notificationSoundEnabled: true };
+const THEMES = ['light', 'ocean', 'lavender', 'dark'];
 
 export const preferencesService = {
   async load() {
@@ -12,7 +13,8 @@ export const preferencesService = {
         : await SecureStore.getItemAsync(KEY);
       const saved = raw ? JSON.parse(raw) : {};
       return {
-        theme: ['system', 'light', 'dark'].includes(saved.theme) ? saved.theme : DEFAULTS.theme,
+        // Older installs used "system"; migrate them to the explicit light preset.
+        theme: THEMES.includes(saved.theme) ? saved.theme : DEFAULTS.theme,
         notificationsEnabled: Boolean(saved.notificationsEnabled),
         notificationSoundEnabled: saved.notificationSoundEnabled !== false,
       };
@@ -23,7 +25,7 @@ export const preferencesService = {
 
   async save(value) {
     const serialized = JSON.stringify({
-      theme: ['system', 'light', 'dark'].includes(value.theme) ? value.theme : DEFAULTS.theme,
+      theme: THEMES.includes(value.theme) ? value.theme : DEFAULTS.theme,
       notificationsEnabled: Boolean(value.notificationsEnabled),
       notificationSoundEnabled: value.notificationSoundEnabled !== false,
     });

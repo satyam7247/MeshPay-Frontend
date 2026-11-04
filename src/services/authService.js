@@ -101,6 +101,15 @@ export const authService = {
     if (!saved?.token || !saved?.user?.id) return null;
     apiClient.setAccessToken(saved.token);
     try {
+      try { await apiClient.post('/api/app-lock/lock',{}); }
+      catch (error) { if (error?.status===401) throw error; }
+      const appLock=await apiClient.get('/api/app-lock');
+      // Keep /api/auth/me behind the lock. The session is already authenticated
+      // by the App Lock status request, and the saved profile is enough to show
+      // the lock screen until the user verifies their screen password.
+      if(appLock?.enabled){
+        return {...saved,offline:false,sessionSaved:true,appLockRequired:true};
+      }
       const user=await apiClient.get('/api/auth/me');
       if (generation!==authGeneration) return null;
       if (!user?.id) throw new Error('Invalid profile response.');

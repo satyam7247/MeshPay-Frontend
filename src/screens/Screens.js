@@ -41,7 +41,7 @@ const normalizeDecimalInput=value=>{
 
 function Row({ icon, title, subtitle, action, danger=false }) {
   return <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-    <View style={{width:42,height:42,borderRadius:14,backgroundColor:danger?'#FFF0F1':c.surface2,alignItems:'center',justifyContent:'center'}}>
+    <View style={{width:42,height:42,borderRadius:14,backgroundColor:danger?c.dangerSurface:c.surface2,alignItems:'center',justifyContent:'center'}}>
       <Ionicons name={icon} size={19} color={danger?c.red:c.blue}/>
     </View>
     <View style={{flex:1,gap:3}}><Text style={{color:danger?c.red:c.text,fontWeight:'700',fontSize:14}}>{title}</Text>{subtitle?<Text style={{color:c.muted,fontSize:12}}>{subtitle}</Text>:null}</View>
@@ -93,17 +93,17 @@ function EmptyState({ icon='file-tray-outline', title, message, action }) {
   </Card>;
 }
 
-function BrandMark({ dark=false }) {
+function BrandMark() {
   return <View style={{alignItems:'center',gap:13}}>
-    <View style={{width:68,height:68,borderRadius:23,backgroundColor:dark?'#102C4C':c.surface2,borderWidth:1,borderColor:dark?'#234C70':c.line,alignItems:'center',justifyContent:'center'}}>
+    <View style={{width:68,height:68,borderRadius:23,backgroundColor:c.surface2,borderWidth:1,borderColor:c.line,alignItems:'center',justifyContent:'center'}}>
       <Ionicons name="git-network-outline" size={34} color={c.cyan}/>
     </View>
-    <Text style={{fontSize:31,fontWeight:'900',letterSpacing:-.8,color:dark?c.white:c.text}}>Mesh<Text style={{color:c.cyan}}>Pay</Text></Text>
+    <Text style={{fontSize:31,fontWeight:'900',letterSpacing:-.8,color:c.text}}>Mesh<Text style={{color:c.cyan}}>Pay</Text></Text>
   </View>;
 }
 
 export function Splash({navigation}) {
-  const {user,isRestoringSession,offlineSession}=useApp();
+  const {user,isRestoringSession,offlineSession,resolvedTheme}=useApp();
   const {width:screenWidth}=useWindowDimensions();
   const gateProgress=useRef(new Animated.Value(0)).current;
   const buttonOpacity=useRef(new Animated.Value(0)).current;
@@ -120,11 +120,11 @@ export function Splash({navigation}) {
     ]);
     opening.start(({finished})=>{if(finished)setGateOpened(true);});
     return()=>opening.stop();
-  },[buttonOpacity,gateProgress]);
+  },[buttonOpacity,gateProgress,useNativeDriver]);
 
   const leftDoorStyle={transform:[{translateX:gateProgress.interpolate({inputRange:[0,1],outputRange:[0,-screenWidth/2]})}]};
   const rightDoorStyle={transform:[{translateX:gateProgress.interpolate({inputRange:[0,1],outputRange:[0,screenWidth/2]})}]};
-  const doorColor='#12455B';
+  const doorColor=c.surface2;
   useEffect(()=>{
     if(!isSecurityModalVisible)return;
     setDiagnostics(current=>({...current,loading:true}));
@@ -156,37 +156,37 @@ export function Splash({navigation}) {
     }
   };
   const diagnosticRows=[
-    {label:'Local Storage',value:diagnostics.storageActive===null?'Checking':!diagnostics.storageActive?'SQLite unavailable':diagnostics.storagePersistent?'SQLite ledger active · decimal amounts stored as strings':'Temporary browser-session SQLite · not saved after reload',ok:diagnostics.storageActive===true&&diagnostics.storagePersistent},
-    {label:'Encryption Layer',value:diagnostics.encryptionEnabled?'AES-256 local database encryption enabled':'AES-256 local database encryption not enabled',ok:diagnostics.encryptionEnabled},
-    {label:'Mesh Network',value:diagnostics.bridgeListening?'Bluetooth bridge listener active':'Native Bluetooth bridge not connected',ok:diagnostics.bridgeListening},
-    {label:'Central Security',value:'Spring Boot bluetoothTxnId unique constraint is configured',ok:true},
+    {label:'Saved activity',value:diagnostics.storageActive===null?'Checking this device…':!diagnostics.storageActive?'Activity may not be saved on this device.':diagnostics.storagePersistent?'Your saved activity stays on this device.':'In this browser, activity may disappear after a refresh.',ok:diagnostics.storageActive===true&&diagnostics.storagePersistent},
+    {label:'Data protection',value:diagnostics.encryptionEnabled?'Your saved app data is protected on this device.':'Extra protection for saved data is not available on this device.',ok:diagnostics.encryptionEnabled},
+    {label:'Nearby connection',value:diagnostics.bridgeListening?'Nearby connection is ready.':'Nearby offline transfers are not available on this device yet.',ok:diagnostics.bridgeListening},
+    {label:'Transfer safety',value:'We check for duplicate transfer records when your activity syncs.',ok:true},
   ];
-  return <Page scroll={false} background={c.navy} contentStyle={{padding:0,gap:0,justifyContent:'space-between'}}>
-    <StatusBar style="light"/>
+  return <Page scroll={false} background={c.bg} contentStyle={{padding:0,gap:0,justifyContent:'space-between'}}>
+    <StatusBar style={resolvedTheme==='dark'||resolvedTheme==='lavender'?'light':'dark'}/>
     <View style={{flex:1,alignItems:'center',justifyContent:'center',gap:18,paddingTop:24}}>
-      <BrandMark dark/>
-      <Text style={{fontSize:17,fontWeight:'700',color:c.white,marginTop:6}}>Pay without internet</Text>
-      <Text style={{fontSize:14,color:'#AFC3D9',textAlign:'center',lineHeight:21,maxWidth:280}}>A peer-to-peer payment concept, designed for places with limited connectivity.</Text>
-      <View style={{borderRadius:18,backgroundColor:'#123D57',borderWidth:1,borderColor:'#1F6077',paddingHorizontal:13,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:7,marginTop:2}}>
-        <View style={{width:7,height:7,borderRadius:4,backgroundColor:meshService.getStatus().available?c.cyan:'#F0C878'}}/>
-        <Text style={{color:'#BBD5E5',fontSize:12}}>Mode: <Text style={{color:meshService.getStatus().available?c.cyan:'#F0C878',fontWeight:'800'}}>{meshService.getStatus().available?'Bluetooth Mesh Enabled':'Bluetooth Mesh Preview'}</Text></Text>
+      <BrandMark/>
+      <Text style={{fontSize:17,fontWeight:'700',color:c.text,marginTop:6}}>Pay without internet</Text>
+      <Text style={{fontSize:14,color:c.muted,textAlign:'center',lineHeight:21,maxWidth:280}}>A peer-to-peer payment concept, designed for places with limited connectivity.</Text>
+      <View style={{borderRadius:18,backgroundColor:c.surface2,borderWidth:1,borderColor:c.line,paddingHorizontal:13,paddingVertical:7,flexDirection:'row',alignItems:'center',gap:7,marginTop:2}}>
+        <View style={{width:7,height:7,borderRadius:4,backgroundColor:meshService.getStatus().available?c.green:c.warning}}/>
+        <Text style={{color:c.text,fontSize:12}}>Mode: <Text style={{color:meshService.getStatus().available?c.green:c.warning,fontWeight:'800'}}>{meshService.getStatus().available?'Bluetooth Mesh Enabled':'Bluetooth Mesh Preview'}</Text></Text>
       </View>
     </View>
     <View style={{height:210,justifyContent:'center',alignItems:'center'}}>
-      <View style={{height:164,width:220,borderRadius:82,borderWidth:1,borderColor:'#17628C',alignItems:'center',justifyContent:'center',backgroundColor:'#0D2844'}}>
-        <View style={{height:92,width:92,borderRadius:30,backgroundColor:'#123B60',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#2278A6'}}><Ionicons name="swap-horizontal" size={42} color={c.cyan}/></View>
-        <Animated.View style={[{position:'absolute',left:106,top:0,width:4,height:'100%',borderRadius:2,backgroundColor:'#20B9D8'},leftDoorStyle]}/>
-        <Animated.View style={[{position:'absolute',right:106,top:0,width:4,height:'100%',borderRadius:2,backgroundColor:'#20B9D8'},rightDoorStyle]}/>
-      </View>
-      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open MeshPay security diagnostics" accessibilityHint="Shows local storage, encryption, Bluetooth, and backend status" hitSlop={16} activeOpacity={0.7} onPress={()=>setIsSecurityModalVisible(true)} style={{position:'absolute',bottom:0,left:0,right:0,minHeight:42,alignItems:'center',justifyContent:'center',paddingHorizontal:8,zIndex:6}}>
-        <Text style={{color:'#AFC3D9',fontSize:12,textAlign:'center'}}>Secured with Local SQLite &amp; Offline Mesh Verification</Text>
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open connection and safety details" accessibilityHint="Shows which app features are ready on this device" activeOpacity={0.78} onPress={()=>setIsSecurityModalVisible(true)}>
+        <View style={{height:178,width:240,borderRadius:90,borderWidth:1,borderColor:c.line,alignItems:'center',justifyContent:'center',gap:7,backgroundColor:c.surface2}}>
+          <View style={{height:78,width:78,borderRadius:27,backgroundColor:c.surface,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:c.line}}><Ionicons name="swap-horizontal" size={38} color={c.cyan}/></View>
+          <Text style={{color:c.muted,fontSize:12,fontWeight:'700'}}>Connection &amp; Safety</Text>
+          <Animated.View style={[{position:'absolute',left:106,top:0,width:4,height:'100%',borderRadius:2,backgroundColor:c.cyan},leftDoorStyle]}/>
+          <Animated.View style={[{position:'absolute',right:106,top:0,width:4,height:'100%',borderRadius:2,backgroundColor:c.cyan},rightDoorStyle]}/>
+        </View>
       </TouchableOpacity>
     </View>
     <Animated.View pointerEvents={gateOpened&&!isRestoringSession?'auto':'none'} style={{flexDirection:'row',gap:12,opacity:buttonOpacity,paddingHorizontal:20,paddingBottom:28}}>
       {isRestoringSession
         ?<View style={{flex:1}}><Button title="Loading your account..." disabled/></View>
         :user
-        ?<TouchableOpacity accessibilityRole="button" disabled={!gateOpened||continueBusy} onPress={continueToMeshPay} style={{flex:1,minHeight:62,borderRadius:24,backgroundColor:'#00D2FF',alignItems:'center',justifyContent:'center',flexDirection:'row',gap:10,opacity:continueBusy ? 0.75 : 1,elevation:5,shadowColor:'#00D2FF',shadowOpacity:.25,shadowRadius:14,shadowOffset:{width:0,height:4}}}>{continueBusy?<ActivityIndicator color={c.navy}/>:<><Text style={{color:c.navy,fontSize:17,fontWeight:'900'}}>Continue to MeshPay</Text><Ionicons name="arrow-forward" size={20} color={c.navy}/></>}</TouchableOpacity>
+        ?<TouchableOpacity accessibilityRole="button" disabled={!gateOpened||continueBusy} onPress={continueToMeshPay} style={{flex:1,minHeight:62,borderRadius:24,backgroundColor:c.accentButton,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:10,opacity:continueBusy ? 0.75 : 1,elevation:5,shadowColor:c.accentButton,shadowOpacity:.25,shadowRadius:14,shadowOffset:{width:0,height:4}}}>{continueBusy?<ActivityIndicator color={c.accentOn}/>:<><Text style={{color:c.accentOn,fontSize:17,fontWeight:'900'}}>Continue to MeshPay</Text><Ionicons name="arrow-forward" size={20} color={c.accentOn}/></>}</TouchableOpacity>
         :<>
           <View style={{flex:1}}><Button title="Log in" variant="outline" onPress={()=>navigation.navigate('Auth',{mode:'login'})}/></View>
           <View style={{flex:1}}><Button title="Sign up" icon="arrow-forward" onPress={()=>navigation.navigate('Auth',{mode:'signup'})}/></View>
@@ -194,26 +194,26 @@ export function Splash({navigation}) {
     </Animated.View>
     <View pointerEvents="none" style={{position:'absolute',top:0,bottom:0,left:0,right:0,zIndex:5,flexDirection:'row'}}>
       <Animated.View style={[{width:screenWidth/2,height:'100%',backgroundColor:doorColor,borderRightWidth:3,borderRightColor:c.cyan,justifyContent:'center'},leftDoorStyle]}>
-        {[0,1,2].map((line)=><View key={line} style={{position:'absolute',left:`${24+line*24}%`,top:0,bottom:0,width:1,backgroundColor:'#28718A',opacity:.65}}/>)}
-        <View style={{position:'absolute',right:14,top:'50%',width:13,height:13,borderRadius:7,backgroundColor:'#F0C878',borderWidth:2,borderColor:'#FFE3A5'}}/>
+        {[0,1,2].map((line)=><View key={line} style={{position:'absolute',left:`${24+line*24}%`,top:0,bottom:0,width:1,backgroundColor:c.line,opacity:.85}}/>)}
+        <View style={{position:'absolute',right:14,top:'50%',width:13,height:13,borderRadius:7,backgroundColor:c.orange,borderWidth:2,borderColor:c.warningSurface}}/>
       </Animated.View>
       <Animated.View style={[{width:screenWidth/2,height:'100%',backgroundColor:doorColor,borderLeftWidth:3,borderLeftColor:c.cyan,justifyContent:'center'},rightDoorStyle]}>
-        {[0,1,2].map((line)=><View key={line} style={{position:'absolute',left:`${24+line*24}%`,top:0,bottom:0,width:1,backgroundColor:'#28718A',opacity:.65}}/>)}
-        <View style={{position:'absolute',left:14,top:'50%',width:13,height:13,borderRadius:7,backgroundColor:'#F0C878',borderWidth:2,borderColor:'#FFE3A5'}}/>
+        {[0,1,2].map((line)=><View key={line} style={{position:'absolute',left:`${24+line*24}%`,top:0,bottom:0,width:1,backgroundColor:c.line,opacity:.85}}/>)}
+        <View style={{position:'absolute',left:14,top:'50%',width:13,height:13,borderRadius:7,backgroundColor:c.orange,borderWidth:2,borderColor:c.warningSurface}}/>
       </Animated.View>
     </View>
     <Modal visible={isSecurityModalVisible} transparent animationType="slide" onRequestClose={()=>setIsSecurityModalVisible(false)}>
       <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.7)',justifyContent:'center',padding:24}}>
-        <View style={{backgroundColor:'#0A192F',borderRadius:20,borderWidth:1,borderColor:'#24506D',padding:22,gap:17}}>
+        <View style={{backgroundColor:c.surface,borderRadius:20,borderWidth:1,borderColor:c.line,padding:22,gap:17}}>
           <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-            <View style={{width:46,height:46,borderRadius:15,backgroundColor:'#143D57',alignItems:'center',justifyContent:'center'}}><Ionicons name="shield-checkmark-outline" size={24} color={c.cyan}/></View>
-            <View style={{flex:1}}><Text style={{color:c.white,fontSize:18,fontWeight:'900'}}>MeshPay Security Architecture</Text><Text style={{color:'#AFC3D9',fontSize:12,marginTop:3}}>Live device and backend capability status</Text></View>
+            <View style={{width:46,height:46,borderRadius:15,backgroundColor:c.surface2,alignItems:'center',justifyContent:'center'}}><Ionicons name="shield-checkmark-outline" size={24} color={c.cyan}/></View>
+            <View style={{flex:1}}><Text style={{color:c.text,fontSize:18,fontWeight:'900'}}>Your app safety check</Text><Text style={{color:c.muted,fontSize:12,marginTop:3}}>What's ready on this device</Text></View>
           </View>
-          {diagnostics.loading?<ActivityIndicator color={c.cyan}/>:diagnosticRows.map(row=><View key={row.label} style={{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:'#0C2037',borderRadius:14,padding:13}}>
-            <Ionicons name={row.ok?'checkmark-circle':'alert-circle'} size={21} color={row.ok?'#43D69A':'#F0C878'}/>
-            <View style={{flex:1}}><Text style={{color:c.white,fontSize:13,fontWeight:'800'}}>{row.label}</Text><Text style={{color:row.ok?'#77DDB2':'#F0C878',fontSize:12,marginTop:3}}>{row.value}</Text></View>
+          {diagnostics.loading?<ActivityIndicator color={c.cyan}/>:diagnosticRows.map(row=><View key={row.label} style={{flexDirection:'row',alignItems:'center',gap:11,backgroundColor:c.surface2,borderRadius:14,padding:13}}>
+            <Ionicons name={row.ok?'checkmark-circle':'alert-circle'} size={21} color={row.ok?c.green:c.warning}/>
+            <View style={{flex:1}}><Text style={{color:c.text,fontSize:13,fontWeight:'800'}}>{row.label}</Text><Text style={{color:row.ok?c.green:c.warning,fontSize:12,marginTop:3}}>{row.value}</Text></View>
           </View>)}
-          <TouchableOpacity accessibilityRole="button" onPress={()=>setIsSecurityModalVisible(false)} style={{height:48,borderRadius:16,backgroundColor:'#00D2FF',alignItems:'center',justifyContent:'center',marginTop:2}}><Text style={{color:c.navy,fontWeight:'900',fontSize:15}}>Close Diagnostics</Text></TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" onPress={()=>setIsSecurityModalVisible(false)} style={{height:48,borderRadius:16,backgroundColor:c.accentButton,alignItems:'center',justifyContent:'center',marginTop:2}}><Text style={{color:c.accentOn,fontWeight:'900',fontSize:15}}>Close</Text></TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -221,7 +221,7 @@ export function Splash({navigation}) {
 }
 
 export function Auth({navigation,route}) {
-  const {setUser,setOfflineSession,refreshTransactions,refreshPrivacyAccount,restoreLocalAccountLock,resolvedTheme}=useApp();
+  const {setUser,setOfflineSession,refreshTransactions,refreshPrivacyAccount,restoreLocalAccountLock,resolvedTheme,initializeAppLock}=useApp();
   const [mode,setMode]=useState(route?.params?.mode==='signup'?'signup':'login');
   const [name,setName]=useState(''); const [email,setEmail]=useState(''); const [phone,setPhone]=useState('');
   const [password,setPassword]=useState(''); const [confirmPassword,setConfirmPassword]=useState('');
@@ -249,6 +249,7 @@ export function Auth({navigation,route}) {
       }
       await refreshPrivacyAccount(session.user?.id).catch(()=>{});
       await restoreLocalAccountLock(session.user?.id);
+      await initializeAppLock(session.user?.id).catch(()=>({enabled:false,type:null}));
       setUser(session.user);
       setOfflineSession(false);
       navigation.replace('Main');
@@ -261,7 +262,7 @@ export function Auth({navigation,route}) {
     } finally { submitInFlight.current=false; setBusy(false); }
   };
   return <Page>
-    <StatusBar style={resolvedTheme==='dark'?'light':'dark'}/>
+    <StatusBar style={resolvedTheme==='dark'||resolvedTheme==='lavender'?'light':'dark'}/>
     <BrandMark/>
     <View style={{gap:7,marginTop:8}}>
       <Text style={{fontSize:28,fontWeight:'900',letterSpacing:-.6,color:c.text}}>{signup?'Create your account':'Welcome back'}</Text>
@@ -277,7 +278,7 @@ export function Auth({navigation,route}) {
       <View><Label>Password</Label><View style={{position:'relative',justifyContent:'center'}}><Field value={password} onChangeText={setPassword} placeholder="Enter your password" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete={signup?'new-password':'current-password'} returnKeyType={signup?'next':'done'} maxLength={72} style={{height:54,borderRadius:14,backgroundColor:c.bg,borderColor:c.line,borderWidth:1,paddingHorizontal:15,paddingRight:54,color:c.text,fontSize:15}}/><TouchableOpacity onPress={()=>setShowPassword(v=>!v)} style={{position:'absolute',right:12,padding:8}} accessibilityLabel={showPassword?'Hide password':'Show password'}><Ionicons name={showPassword?'eye-off-outline':'eye-outline'} size={20} color={c.muted}/></TouchableOpacity></View></View>
       {signup&&<View><Label>Confirm password</Label><Field value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter your password" secureTextEntry={!showPassword} autoCapitalize="none" autoComplete="new-password" returnKeyType="done" maxLength={72}/></View>}
     </Card>
-    {error?<Card style={{borderColor:'#F2C1C5',backgroundColor:'#FFF4F4',padding:13}}><Text style={{color:c.red,lineHeight:20,fontSize:13}}>{error}</Text></Card>:null}
+    {error?<Card style={{borderColor:c.red,backgroundColor:c.dangerSurface,padding:13}}><Text style={{color:c.red,lineHeight:20,fontSize:13}}>{error}</Text></Card>:null}
     <Button title={busy?'Please wait...':signup?'Create account':'Continue to MeshPay'} icon={busy?undefined:'arrow-forward'} disabled={busy} onPress={submit}/>
     {!signup?<TouchableOpacity onPress={()=>navigation.navigate('PasswordRecovery',{mode:'forgot'})} accessibilityRole="button" style={{alignSelf:'center',paddingVertical:6}}><Text style={{color:c.blue,fontWeight:'800',fontSize:13}}>Forgot Password?</Text></TouchableOpacity>:null}
     <View style={{flexDirection:'row',justifyContent:'center',alignItems:'center',gap:7}}><Ionicons name="shield-checkmark-outline" size={15} color={c.muted}/><Text style={{color:c.muted,fontSize:12,textAlign:'center'}}>Your account password is never your UPI PIN.</Text></View>
@@ -395,7 +396,7 @@ export function PasswordRecovery({navigation,route}) {
       </Card>:null}
     </>}
     {info&&!completed?<Card style={{padding:13,backgroundColor:c.surface2}}><Text style={{fontSize:12,color:c.text,lineHeight:18}}>{info}</Text></Card>:null}
-    {error?<Card style={{padding:13,borderColor:'#F2C1C5',backgroundColor:'#FFF4F4'}}><Text style={{color:c.red,fontSize:13,lineHeight:19}}>{error}</Text></Card>:null}
+    {error?<Card style={{padding:13,borderColor:c.red,backgroundColor:c.dangerSurface}}><Text style={{color:c.red,fontSize:13,lineHeight:19}}>{error}</Text></Card>:null}
   </Page>;
 }
 
@@ -407,27 +408,27 @@ export function Home({navigation}) {
       <View style={{gap:5}}><Text style={{color:c.muted,fontSize:13}}>Welcome back</Text><Text style={{fontSize:23,fontWeight:'900',color:c.text}}>{user?.name||'MeshPay member'}</Text></View>
       <Avatar name={user?.name} size={48}/>
     </View>
-    {offlineSession?<View style={{backgroundColor:'#FFF5DF',borderRadius:15,padding:13,flexDirection:'row',gap:9,alignItems:'center'}}><Ionicons name="cloud-offline-outline" size={19} color="#94650D"/><Text style={{flex:1,color:'#77591E',fontSize:12,lineHeight:18}}>Offline profile. Saved recipient lookups are available; online account actions need a connection.</Text></View>:null}
+    {offlineSession?<View style={{backgroundColor:c.warningSurface,borderRadius:15,padding:13,flexDirection:'row',gap:9,alignItems:'center'}}><Ionicons name="cloud-offline-outline" size={19} color={c.warning}/><Text style={{flex:1,color:c.warning,fontSize:12,lineHeight:18}}>Offline profile. Saved recipient lookups are available; online account actions need a connection.</Text></View>:null}
     <Card style={{backgroundColor:c.navy,borderColor:c.navy,padding:20,gap:14}}>
-      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}><Text style={{color:'#CBD9E8',fontWeight:'700',fontSize:13}}>Available balance</Text><Ionicons name="eye-outline" size={19} color="#D4E5F4"/></View>
+      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}><Text style={{color:c.onNavyMuted,fontWeight:'700',fontSize:13}}>Available balance</Text><Ionicons name="eye-outline" size={19} color={c.onNavyMuted}/></View>
       <Text style={{color:c.white,fontSize:25,fontWeight:'900'}}>{privacyAccount?.hideBalance?'Hidden':'Not available'}</Text>
-      <Text style={{color:'#B5C6D9',fontSize:12,lineHeight:18}}>{privacyAccount?.hideBalance?'Balance visibility is hidden by your privacy setting.':'A bank or payment provider is not connected, so no balance is displayed.'}</Text>
+      <Text style={{color:c.onNavyMuted,fontSize:12,lineHeight:18}}>{privacyAccount?.hideBalance?'Balance visibility is hidden by your privacy setting.':'A bank or payment provider is not connected, so no balance is displayed.'}</Text>
       <TouchableOpacity onPress={()=>navigation.navigate('Main',{screen:'Wallet'})} style={{alignSelf:'flex-start',backgroundColor:'#FFFFFF20',paddingVertical:10,paddingHorizontal:14,borderRadius:12}}><Text style={{color:c.white,fontWeight:'800',fontSize:12}}>Link a bank account</Text></TouchableOpacity>
     </Card>
     <View style={{flexDirection:'row',justifyContent:'space-between'}}>
       {[
         {icon:'arrow-up-outline',label:'Send',route:'Send',color:c.blue},
-        {icon:'qr-code-outline',label:'Scan',route:'Scan',color:'#159C87'},
-        {icon:'time-outline',label:'History',route:'History',color:'#6C63D9'},
-        {icon:'git-network-outline',label:'Mesh',route:'Mesh',color:'#E18A31'},
+        {icon:'qr-code-outline',label:'Scan',route:'Scan',color:c.tealButton},
+        {icon:'time-outline',label:'History',route:'History',color:c.purple},
+        {icon:'git-network-outline',label:'Mesh',route:'Mesh',color:c.orange},
       ].map(item=><TouchableOpacity key={item.label} onPress={()=>navigation.navigate(item.route)} style={{alignItems:'center',gap:8,minWidth:62}}>
-        <View style={{width:52,height:52,borderRadius:18,backgroundColor:item.color,alignItems:'center',justifyContent:'center'}}><Ionicons name={item.icon} size={22} color={c.white}/></View>
+        <View style={{width:52,height:52,borderRadius:18,backgroundColor:item.color,alignItems:'center',justifyContent:'center'}}><Ionicons name={item.icon} size={22} color={c.accentOn}/></View>
         <Text style={{color:c.text,fontSize:12,fontWeight:'700'}}>{item.label}</Text>
       </TouchableOpacity>)}
     </View>
-    <View style={{backgroundColor:'#E8F6F7',borderRadius:18,padding:16,flexDirection:'row',alignItems:'center',gap:13}}>
-      <View style={{width:42,height:42,borderRadius:14,backgroundColor:'#D4F0F0',alignItems:'center',justifyContent:'center'}}><Ionicons name="git-network-outline" size={21} color={c.teal}/></View>
-      <View style={{flex:1,gap:4}}><Text style={{color:c.teal,fontWeight:'800'}}>Offline payments</Text><Text style={{color:'#517276',fontSize:12,lineHeight:17}}>Device-to-device payment support is not active in this build.</Text></View>
+    <View style={{backgroundColor:c.infoSurface,borderRadius:18,padding:16,flexDirection:'row',alignItems:'center',gap:13}}>
+      <View style={{width:42,height:42,borderRadius:14,backgroundColor:c.surface,alignItems:'center',justifyContent:'center'}}><Ionicons name="git-network-outline" size={21} color={c.teal}/></View>
+      <View style={{flex:1,gap:4}}><Text style={{color:c.teal,fontWeight:'800'}}>Offline payments</Text><Text style={{color:c.muted,fontSize:12,lineHeight:17}}>Device-to-device payment support is not active in this build.</Text></View>
     </View>
     <SectionTitle title="Recent activity" action="See all" onAction={()=>navigation.navigate('History')}/>
     {latest.length?latest.map((item,index)=><Txn key={item.id||index} item={item}/>):<EmptyState icon="receipt-outline" title="Payment history unavailable" message="No payment-provider-confirmed records are available. The internal mesh simulator is not bank settlement."/>}
@@ -493,19 +494,19 @@ export function SendMoney({navigation,route}) {
     <View style={{gap:6}}><Text style={{fontSize:23,fontWeight:'900',color:c.text}}>Find a recipient</Text><Text style={{color:c.muted,fontSize:13,lineHeight:20}}>Search the app directory or saved recipients on this device.</Text></View>
     <View><Label>Recipient mobile number</Label><Field value={mobileNumber} onChangeText={changeNumber} placeholder="10-digit mobile number" keyboardType="phone-pad" returnKeyType="search" onSubmitEditing={findRecipient}/></View>
     <Button title={lookupBusy?'Finding recipient...':'Find recipient'} icon={lookupBusy?undefined:'search-outline'} disabled={lookupBusy||!user?.id} onPress={findRecipient}/>
-    {lookup?.status===RecipientLookupStatus.SERVER_DATABASE_MATCH?<Card style={{gap:14,borderColor:'#B8DCCD'}}>
+    {lookup?.status===RecipientLookupStatus.SERVER_DATABASE_MATCH?<Card style={{gap:14,borderColor:c.green}}>
       <Row icon="person-circle-outline" title={lookup.recipient.displayName} subtitle="Found in the MeshPay app database" action={<Badge tone="green">APP RECORD</Badge>}/>
       <View style={{height:1,backgroundColor:c.line}}/>
       <Row icon="at-outline" title="MeshPay ID" subtitle={lookup.recipient.meshPayId||'Not provided'}/>
       <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>Not verified by OTP, a bank, or a live UPI provider.</Text>
       {lookup.savedForOffline?<Badge tone="green">SAVED FOR OFFLINE LOOKUP</Badge>:<Button title={saving?'Saving...':'Save for offline lookup'} variant="outline" icon="bookmark-outline" disabled={saving} onPress={saveForOffline}/>}
     </Card>:null}
-    {lookup?.status===RecipientLookupStatus.LOCAL_CACHE_MATCH?<Card style={{gap:14,borderColor:lookup.isStale?'#E8D29E':'#B8DCCD'}}>
+    {lookup?.status===RecipientLookupStatus.LOCAL_CACHE_MATCH?<Card style={{gap:14,borderColor:lookup.isStale?c.warning:c.green}}>
       <Row icon="person-circle-outline" title={lookup.recipient.displayName} subtitle="Saved recipient found on this device" action={<Badge tone={lookup.isStale?'amber':'green'}>{lookup.isStale?'STALE':'LOCAL CACHE'}</Badge>}/>
       <Row icon="at-outline" title="MeshPay ID" subtitle={lookup.recipient.meshPayId||'Not provided'}/>
       <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>Identity not verified by a bank. Saved information may not reflect the current owner of this number.</Text>
       <Text style={{color:c.muted,fontSize:11}}>Last sync: {lookup.lastSyncedAt?new Date(lookup.lastSyncedAt).toLocaleString():'Unknown'}</Text>
-      {lookup.isStale?<Text style={{color:'#94650D',fontSize:12,fontWeight:'700'}}>This saved record is over 30 days old. Verify the recipient before continuing.</Text>:null}
+      {lookup.isStale?<Text style={{color:c.warning,fontSize:12,fontWeight:'700'}}>This saved record is over 30 days old. Verify the recipient before continuing.</Text>:null}
     </Card>:null}
     {lookup?.status===RecipientLookupStatus.NOT_FOUND?<EmptyState icon="person-remove-outline" title="Recipient not found" message="No discoverable record for this number was found in the MeshPay app database."/>:null}
     {lookup?.status===RecipientLookupStatus.LOOKUP_UNAVAILABLE?<EmptyState icon="cloud-offline-outline" title="Lookup unavailable" message="The recipient service could not be reached, and there is no matching saved recipient on this device."/>:null}
@@ -513,7 +514,7 @@ export function SendMoney({navigation,route}) {
     {saveMessage?<Text style={{color:c.muted,fontSize:12}}>{saveMessage}</Text>:null}
     {found?<View style={{gap:12}}>
       <View><Label>Amount</Label><View style={{flexDirection:'row',alignItems:'center',height:62,borderWidth:1,borderColor:c.line,borderRadius:16,backgroundColor:c.surface,paddingHorizontal:16,gap:8}}><Text style={{color:c.text,fontSize:22,fontWeight:'800'}}>₹</Text><Field value={amount} onChangeText={value=>{setAmount(normalizeDecimalInput(value));setError('');}} keyboardType="decimal-pad" placeholder="0.00" maxLength={72} style={{flex:1,height:58,borderWidth:0,backgroundColor:'transparent',paddingHorizontal:0,fontSize:22,fontWeight:'800'}}/></View></View>
-      <View style={{flexDirection:'row',gap:8}}>{['100','200','500','1000'].map(value=><TouchableOpacity key={value} onPress={()=>setAmount(value)} style={{flex:1,paddingVertical:10,borderRadius:12,borderWidth:1,borderColor:c.line,backgroundColor:amount===value?'#E5F0FF':c.surface,alignItems:'center'}}><Text style={{fontSize:12,color:amount===value?c.blue:c.text,fontWeight:'700'}}>₹{Number(value).toLocaleString('en-IN')}</Text></TouchableOpacity>)}</View>
+      <View style={{flexDirection:'row',gap:8}}>{['100','200','500','1000'].map(value=><TouchableOpacity key={value} onPress={()=>setAmount(value)} style={{flex:1,paddingVertical:10,borderRadius:12,borderWidth:1,borderColor:amount===value?c.blue:c.line,backgroundColor:amount===value?c.infoSurface:c.surface,alignItems:'center'}}><Text style={{fontSize:12,color:amount===value?c.blue:c.text,fontWeight:'700'}}>₹{Number(value).toLocaleString('en-IN')}</Text></TouchableOpacity>)}</View>
       <View><Label>Note (optional)</Label><Field value={note} onChangeText={setNote} placeholder="What's this for?" maxLength={50}/></View>
       {isAccountLocked?<Text style={{color:c.red,fontSize:12,lineHeight:18}}>Payments are blocked while this account is locked.</Text>:null}
       <Button title="Review transfer" icon="arrow-forward" disabled={isAccountLocked} onPress={continueToConfirm}/>
@@ -530,11 +531,11 @@ export function Confirm({navigation,route}) {
     <Header title="Review transfer" back onBack={()=>navigation.goBack()}/>
     <View style={{alignItems:'center',gap:8,paddingVertical:16}}><Avatar name={recipientDisplayName||recipient} size={62}/><Text style={{fontSize:18,fontWeight:'900',color:c.text}}>{recipientDisplayName||'Recipient'}</Text><Text style={{color:c.muted,fontSize:13}}>{recipient}</Text><Text style={{fontSize:32,fontWeight:'900',color:c.text,marginTop:8}}>₹{Number(amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</Text>{note?<Text style={{color:c.muted}}>{note}</Text>:null}</View>
     <Card style={{gap:16}}><Row icon="person-circle-outline" title="Recipient information" subtitle={`${sourceLabel} · UPI ID not independently verified`}/><Row icon="card-outline" title="Payment method" subtitle={merchantUpiId?"External UPI app intent":"No UPI ID or payment provider available"}/><Row icon="shield-checkmark-outline" title="Transfer status" subtitle="This app cannot confirm an external UPI payment"/></Card>
-    <View style={{backgroundColor:isStale?"#FFF5DF":"#EAF2FF",borderColor:isStale?"#E8D29E":"#CCDCF2",borderWidth:1,borderRadius:15,padding:14,flexDirection:"row",gap:10}}><Ionicons name="alert-circle-outline" size={20} color={isStale?"#94650D":c.blue}/><Text style={{flex:1,color:isStale?"#77591E":c.muted,fontSize:12,lineHeight:19}}>{isStale?"This recipient was saved more than 30 days ago. Confirm their details before any real transfer. ":""}{merchantUpiId?"Review the UPI ID and amount in the external payment app before approving.":"No UPI ID is available. This screen cannot initiate or settle a payment."}</Text></View>
+    <View style={{backgroundColor:isStale?c.warningSurface:c.infoSurface,borderColor:isStale?c.warning:c.line,borderWidth:1,borderRadius:15,padding:14,flexDirection:"row",gap:10}}><Ionicons name="alert-circle-outline" size={20} color={isStale?c.warning:c.blue}/><Text style={{flex:1,color:isStale?c.warning:c.muted,fontSize:12,lineHeight:19}}>{isStale?"This recipient was saved more than 30 days ago. Confirm their details before any real transfer. ":""}{merchantUpiId?"Review the UPI ID and amount in the external payment app before approving.":"No UPI ID is available. This screen cannot initiate or settle a payment."}</Text></View>
     {lastSyncedAt?<Text style={{color:c.muted,fontSize:11,textAlign:'center'}}>Recipient record last synced {new Date(lastSyncedAt).toLocaleString()} · {lookupStatus===RecipientLookupStatus.LOCAL_CACHE_MATCH?'local cache':'app directory'}</Text>:null}
-    {merchantUpiId?<Card style={{gap:12,borderColor:isDemoMerchantUpiId?"#E8D29E":c.line}}>
+    {merchantUpiId?<Card style={{gap:12,borderColor:isDemoMerchantUpiId?c.warning:c.line}}>
       <Row icon="at-outline" title={isDemoMerchantUpiId?"Development demo UPI ID":"UPI ID"} subtitle={merchantUpiId} action={<Badge tone={isDemoMerchantUpiId?"amber":"blue"}>{isDemoMerchantUpiId?"DEMO · UNVERIFIED":"UNVERIFIED"}</Badge>}/>
-      <Text style={{color:isDemoMerchantUpiId?"#77591E":c.muted,fontSize:12,lineHeight:18}}>{isDemoMerchantUpiId?"This fallback is only for development. It is not a sandbox payment address and may open a real UPI app. ":"Verify the UPI ID in the payment app before approving."}Only the UPI app or payment provider can confirm whether money was transferred.</Text>
+      <Text style={{color:isDemoMerchantUpiId?c.warning:c.muted,fontSize:12,lineHeight:18}}>{isDemoMerchantUpiId?"This fallback is only for development. It is not a sandbox payment address and may open a real UPI app. ":"Verify the UPI ID in the payment app before approving."}Only the UPI app or payment provider can confirm whether money was transferred.</Text>
       <UpiIntentButton merchantUpiId={merchantUpiId} merchantName={recipientDisplayName||"MeshPay recipient"} amount={amount} isDemo={isDemoMerchantUpiId} disabled={isAccountLocked} onIntentDispatched={({dispatchedAt})=>setIntentDispatchedAt(dispatchedAt)}/>
     </Card>:null}
     {intentDispatchedAt?<Text style={{color:c.muted,textAlign:"center",fontSize:12}}>UPI intent opened at {new Date(intentDispatchedAt).toLocaleTimeString()}. Payment status is not confirmed.</Text>:null}
@@ -565,18 +566,18 @@ export function Mesh() {
   return <Page>
     <Header title="Mesh network"/>
     <View style={{backgroundColor:c.navy,borderRadius:24,padding:24,alignItems:'center',gap:16}}>
-      <View style={{height:164,width:164,borderRadius:82,borderWidth:1,borderColor:status.connected?'#31B9D0':'#1D5577',backgroundColor:'#0E2A47',alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
+      <View style={{height:164,width:164,borderRadius:82,borderWidth:1,borderColor:status.connected?c.cyan:c.line,backgroundColor:c.surface2,alignItems:'center',justifyContent:'center',overflow:'hidden'}}>
         {status.connected?bubbleProgress.map((progress,index)=>{
           const drift=index===0?-46:index===1?0:46;
-          return <Animated.View key={index} pointerEvents="none" style={{position:'absolute',left:78,top:78,width:8,height:8,borderRadius:4,backgroundColor:index===1?'#7BE8F2':'#46B9DC',opacity:progress.interpolate({inputRange:[0,0.15,1],outputRange:[0,0.9,0]}),transform:[{translateX:progress.interpolate({inputRange:[0,1],outputRange:[0,drift]})},{translateY:progress.interpolate({inputRange:[0,1],outputRange:[0,-58]})},{scale:progress.interpolate({inputRange:[0,0.5,1],outputRange:[0.5,1.25,0.7]})}]}}/>;
+          return <Animated.View key={index} pointerEvents="none" style={{position:'absolute',left:78,top:78,width:8,height:8,borderRadius:4,backgroundColor:index===1?c.cyan:c.blue,opacity:progress.interpolate({inputRange:[0,0.15,1],outputRange:[0,0.9,0]}),transform:[{translateX:progress.interpolate({inputRange:[0,1],outputRange:[0,drift]})},{translateY:progress.interpolate({inputRange:[0,1],outputRange:[0,-58]})},{scale:progress.interpolate({inputRange:[0,0.5,1],outputRange:[0.5,1.25,0.7]})}]}}/>;
         }):null}
-        <View style={{width:66,height:66,borderRadius:22,backgroundColor:status.connected?'#145268':'#164164',alignItems:'center',justifyContent:'center'}}><Ionicons name="git-network-outline" size={32} color={status.connected?'#75F0F2':c.cyan}/></View>
-        <View style={{position:'absolute',top:21,left:72}}><Ionicons name="phone-portrait-outline" size={20} color="#77BDD4"/></View>
-        <View style={{position:'absolute',bottom:22,left:28}}><Ionicons name="phone-portrait-outline" size={20} color="#77BDD4"/></View>
-        <View style={{position:'absolute',bottom:22,right:28}}><Ionicons name="phone-portrait-outline" size={20} color="#77BDD4"/></View>
+        <View style={{width:66,height:66,borderRadius:22,backgroundColor:c.surface,alignItems:'center',justifyContent:'center'}}><Ionicons name="git-network-outline" size={32} color={status.connected?c.green:c.cyan}/></View>
+        <View style={{position:'absolute',top:21,left:72}}><Ionicons name="phone-portrait-outline" size={20} color={c.blue}/></View>
+        <View style={{position:'absolute',bottom:22,left:28}}><Ionicons name="phone-portrait-outline" size={20} color={c.blue}/></View>
+        <View style={{position:'absolute',bottom:22,right:28}}><Ionicons name="phone-portrait-outline" size={20} color={c.blue}/></View>
       </View>
       <Text style={{fontSize:19,fontWeight:'900',color:c.white}}>{status.connected?'Live device mesh':'Device mesh preview'}</Text>
-      <Text style={{color:'#BDD0E2',fontSize:13,textAlign:'center',lineHeight:20}}>{status.message} {status.connected?'Live connection activity is shown above.':'Bubbles appear only while a device is connected.'}</Text>
+      <Text style={{color:c.muted,fontSize:13,textAlign:'center',lineHeight:20}}>{status.message} {status.connected?'Live connection activity is shown above.':'Bubbles appear only while a device is connected.'}</Text>
       <Badge tone={status.connected?'green':'amber'}>{status.connected?'CONNECTED':'NOT ACTIVE'}</Badge>
     </View>
     <SectionTitle title="Connected devices"/>
@@ -662,7 +663,7 @@ export function Notifications({navigation}) {
     {!loading&&!items.length&&!error?<EmptyState icon="notifications-outline" title="No notifications yet" message="Payment notifications will appear here after the backend confirms a successful settlement."/>:null}
     {items.map(item=><Card key={item.id} style={{gap:12,borderColor:item.read?c.line:c.blue,backgroundColor:item.read?c.surface:c.surface2}}>
       <View style={{flexDirection:'row',alignItems:'center',gap:10}}>
-        <View style={{width:40,height:40,borderRadius:14,backgroundColor:item.read?c.surface2:'#DCEBFF',alignItems:'center',justifyContent:'center'}}><Ionicons name="arrow-down-circle-outline" size={23} color={c.green}/></View>
+        <View style={{width:40,height:40,borderRadius:14,backgroundColor:item.read?c.surface2:c.infoSurface,alignItems:'center',justifyContent:'center'}}><Ionicons name="arrow-down-circle-outline" size={23} color={c.green}/></View>
         <View style={{flex:1,gap:3}}><Text style={{color:c.text,fontWeight:'900',fontSize:14}}>{item.senderName} sent you ₹{Number(item.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2})}</Text><Text style={{color:c.muted,fontSize:11}}>{item.createdAt?new Date(item.createdAt).toLocaleString():'Date unavailable'}</Text></View>
         {!item.read?<View style={{width:9,height:9,borderRadius:5,backgroundColor:c.red}}/>:null}
       </View>
@@ -694,7 +695,7 @@ function Txn({item,navigation}) {
   const amount=item.detailsHidden?'Hidden':item.amount==null?'Unavailable':`₹${Number(item.amount).toLocaleString('en-IN',{minimumFractionDigits:2})}`;
   return <TouchableOpacity activeOpacity={navigation?0.75:1} onPress={()=>navigation?.navigate('Details',{item})}>
     <Card style={{padding:13}}><View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-      <View style={{width:44,height:44,borderRadius:16,backgroundColor:sent?'#FFF0F1':'#E9F8F1',alignItems:'center',justifyContent:'center'}}><Ionicons name={sent?'arrow-up-outline':'arrow-down-outline'} size={20} color={sent?c.red:c.green}/></View>
+      <View style={{width:44,height:44,borderRadius:16,backgroundColor:sent?c.dangerSurface:c.successSurface,alignItems:'center',justifyContent:'center'}}><Ionicons name={sent?'arrow-up-outline':'arrow-down-outline'} size={20} color={sent?c.red:c.green}/></View>
       <View style={{flex:1,gap:4}}><Text numberOfLines={1} style={{color:c.text,fontWeight:'800'}}>{item.contact||'Transaction'}</Text><Text style={{color:c.muted,fontSize:11}}>{item.date||'Date unavailable'} · {item.direction||'Activity'}</Text></View>
       <View style={{alignItems:'flex-end',gap:5}}><Text style={{color:c.text,fontWeight:'900'}}>{amount}</Text><Text style={{color:c.muted,fontSize:10}}>{item.status||'Status unavailable'}</Text></View>
     </View></Card>
@@ -721,28 +722,29 @@ export function Profile({navigation}) {
     finally { setSavingDiscoverability(false); }
   };
   const logout=async()=>{await clearSession({remoteLogout:true,navigate:true});};
-  return <Page><Header title="Profile" right={<TouchableOpacity onPress={()=>navigation.navigate('Settings')} accessibilityRole="button" accessibilityLabel="Open Privacy and Account settings" hitSlop={8} style={{width:44,height:44,borderRadius:22,backgroundColor:c.blue,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:c.cyan,shadowColor:c.navy,shadowOpacity:0.16,shadowRadius:5,shadowOffset:{width:0,height:2},elevation:3}}><Ionicons name="settings-sharp" size={23} color={c.white}/></TouchableOpacity>}/>
+  return <Page><Header title="Profile" right={<TouchableOpacity onPress={()=>navigation.navigate('Settings')} accessibilityRole="button" accessibilityLabel="Open Privacy and Account settings" hitSlop={8} style={{width:44,height:44,borderRadius:22,backgroundColor:c.accentButton,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:c.cyan,shadowColor:c.navy,shadowOpacity:0.16,shadowRadius:5,shadowOffset:{width:0,height:2},elevation:3}}><Ionicons name="settings-sharp" size={23} color={c.accentOn}/></TouchableOpacity>}/>
     {user?<Card style={{alignItems:'center',gap:9,padding:22}}><Avatar name={user.name} size={68}/><Text style={{color:c.text,fontSize:20,fontWeight:'900'}}>{user.name}</Text><Text style={{color:c.muted,fontSize:13}}>{user.email}</Text>{user.phone?<Text style={{color:c.muted,fontSize:13}}>{user.phone}</Text>:null}</Card>:<EmptyState icon="person-circle-outline" title="Profile unavailable" message="Log in to view your account profile."/>}
     <Card style={{gap:13}}>
-      <Row icon="phone-portrait-outline" title="Recipient lookup" subtitle={discoverability?.enabled?'Your MeshPay record is discoverable':'Your record is hidden from recipient lookup'} action={<Switch value={Boolean(discoverability?.enabled)} onValueChange={updateDiscoverability} disabled={!discoverability||offlineSession||savingDiscoverability} trackColor={{false:c.line,true:'#A5D9CB'}} thumbColor={discoverability?.enabled?c.green:c.white}/>}/>
+      <Row icon="phone-portrait-outline" title="Recipient lookup" subtitle={discoverability?.enabled?'Your MeshPay record is discoverable':'Your record is hidden from recipient lookup'} action={<Switch value={Boolean(discoverability?.enabled)} onValueChange={updateDiscoverability} disabled={!discoverability||offlineSession||savingDiscoverability} trackColor={{false:c.line,true:c.successSurface}} thumbColor={discoverability?.enabled?c.green:c.white}/>}/>
       <Text style={{color:c.muted,fontSize:12,lineHeight:19}}>When enabled, signed-in MeshPay users searching your exact mobile number can see your name and MeshPay ID. This app does not verify phone ownership by OTP or verify identity with a bank.</Text>
-      {offlineSession?<Text style={{color:'#94650D',fontSize:12}}>Reconnect to manage this setting.</Text>:null}
+      {offlineSession?<Text style={{color:c.warning,fontSize:12}}>Reconnect to manage this setting.</Text>:null}
       {discoverabilityMessage?<Text style={{color:c.red,fontSize:12}}>{discoverabilityMessage}</Text>:null}
     </Card>
     <Card style={{gap:17}}>
       <TouchableOpacity onPress={()=>navigation.navigate('Main',{screen:'Wallet'})}><Row icon="card-outline" title="Bank accounts" subtitle="Manage linked accounts" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} /></TouchableOpacity>
       <TouchableOpacity onPress={()=>navigation.navigate('Settings')} accessibilityRole="button"><Row icon="shield-checkmark-outline" title="Security" subtitle="Account password and privacy" action={<Ionicons name="chevron-forward" size={18} color={c.muted}/>} /></TouchableOpacity>
     </Card>
-    <TouchableOpacity onPress={logout} style={{height:52,borderRadius:15,backgroundColor:'#FFF0F1',alignItems:'center',justifyContent:'center',flexDirection:'row',gap:8}}><Ionicons name="log-out-outline" size={19} color={c.red}/><Text style={{color:c.red,fontWeight:'800'}}>Log out</Text></TouchableOpacity>
+    <TouchableOpacity onPress={logout} style={{height:52,borderRadius:15,backgroundColor:c.dangerSurface,alignItems:'center',justifyContent:'center',flexDirection:'row',gap:8}}><Ionicons name="log-out-outline" size={19} color={c.red}/><Text style={{color:c.red,fontWeight:'800'}}>Log out</Text></TouchableOpacity>
   </Page>;
 }
 
 export function Settings({navigation}) {
-  const {settings,updateSettings,resolvedTheme,privacyAccount,updatePrivacyAccount,refreshPrivacyAccount,
-    isAccountLocked,lockSyncPending,setAccountLockLocally,markAccountLockSynchronized}=useApp();
+  const {settings,updateSettings,privacyAccount,updatePrivacyAccount,refreshPrivacyAccount,
+    isAccountLocked,lockSyncPending,setAccountLockLocally,markAccountLockSynchronized,appLock}=useApp();
   const [permission,setPermission]=useState('unsupported');
   const [message,setMessage]=useState('');
   const [saving,setSaving]=useState(false);
+  const [appearanceExpanded,setAppearanceExpanded]=useState(false);
   const [accountLoading,setAccountLoading]=useState(true);
   const [devices,setDevices]=useState([]);
   const [syncStatus,setSyncStatus]=useState(null);
@@ -800,6 +802,7 @@ export function Settings({navigation}) {
     setSaving(true);setMessage('');
     const saved=await updateSettings({theme});
     setSaving(false);
+    setAppearanceExpanded(false);
     setMessage(saved?'Theme preference saved.':'Could not save this preference on this device.');
   };
 
@@ -927,14 +930,16 @@ export function Settings({navigation}) {
   };
 
   const themes=[
-    {id:'system',title:'System',subtitle:`Follow your device (${resolvedTheme})`,icon:'phone-portrait-outline'},
-    {id:'light',title:'Light',subtitle:'Bright background and dark text',icon:'sunny-outline'},
-    {id:'dark',title:'Dark',subtitle:'Dim background for low-light use',icon:'moon-outline'},
+    {id:'light',title:'Daylight',subtitle:'Crisp light surfaces with deep readable text',icon:'sunny-outline'},
+    {id:'ocean',title:'Ocean',subtitle:'Fresh aqua surfaces with strong contrast',icon:'water-outline'},
+    {id:'lavender',title:'Lavender',subtitle:'Soft purple surfaces with deep plum contrast',icon:'flower-outline'},
+    {id:'dark',title:'Midnight',subtitle:'Deep low-glare surfaces with clear accents',icon:'moon-outline'},
   ];
 
   const limits=[0,100,250,500,1000,2000,5000];
   return <Page><Header title="Privacy & Account"/>
     <Card style={{gap:12}}><SectionTitle title="Account security"/><Row icon="key-outline" title="Change password" subtitle="Update your password or recover access by email"/><Button title="Change password" icon="lock-closed-outline" variant="outline" onPress={()=>navigation.navigate('PasswordRecovery',{mode:'change'})}/></Card>
+    <Card style={{gap:12}}><TouchableOpacity accessibilityRole="button" accessibilityLabel={appLock.enabled?'Turn off App Lock':'Turn on App Lock'} activeOpacity={.8} onPress={()=>navigation.navigate('AppLockSetup',{mode:appLock.enabled?'disable':'enable'})}><Row icon="lock-closed-outline" title="App Lock" subtitle={appLock.enabled?'Lock the app when it is backgrounded':'Protect the app with a personal screen lock password'} action={<Switch pointerEvents="none" value={Boolean(appLock.enabled)} trackColor={{false:c.line,true:c.successSurface}} thumbColor={appLock.enabled?c.green:c.white}/>} /></TouchableOpacity></Card>
     <View style={{gap:5}}><Text style={{color:c.text,fontSize:22,fontWeight:'900'}}>Privacy & account controls</Text><Text style={{color:c.muted,fontSize:13,lineHeight:19}}>Account security and privacy preferences are stored by your signed-in account.</Text></View>
     {accountLoading?<Card style={{flexDirection:'row',gap:10,alignItems:'center'}}><ActivityIndicator color={c.blue}/><Text style={{color:c.muted}}>Loading your account controls…</Text></Card>:null}
     {!accountLoading&&privacyAccount?<View style={{gap:11}}>
@@ -952,9 +957,9 @@ export function Settings({navigation}) {
     </View>:null}
     {!accountLoading&&privacyAccount?<Card style={{gap:13}}>
       <SectionTitle title="Transaction privacy"/>
-      <Row icon="eye-off-outline" title="Hide balance" subtitle={privacyAccount.hideBalance?'Balance visibility is hidden':'Hide balance amounts on account screens'} action={<Switch value={Boolean(privacyAccount.hideBalance)} onValueChange={enabled=>savePrivacy({hideBalance:enabled})} disabled={accountBusy} trackColor={{false:c.line,true:'#A5D9CB'}} thumbColor={privacyAccount.hideBalance?c.green:c.white}/>}/>
+      <Row icon="eye-off-outline" title="Hide balance" subtitle={privacyAccount.hideBalance?'Balance visibility is hidden':'Hide balance amounts on account screens'} action={<Switch value={Boolean(privacyAccount.hideBalance)} onValueChange={enabled=>savePrivacy({hideBalance:enabled})} disabled={accountBusy} trackColor={{false:c.line,true:c.successSurface}} thumbColor={privacyAccount.hideBalance?c.green:c.white}/>}/>
       <View style={{height:1,backgroundColor:c.line}}/>
-      <Row icon="receipt-outline" title="Hide transaction details" subtitle={privacyAccount.hideTransactionDetails?'Amounts and counterparties are redacted by the server':'Hide amounts and counterparties in your history'} action={<Switch value={Boolean(privacyAccount.hideTransactionDetails)} onValueChange={enabled=>savePrivacy({hideTransactionDetails:enabled})} disabled={accountBusy} trackColor={{false:c.line,true:'#A5D9CB'}} thumbColor={privacyAccount.hideTransactionDetails?c.green:c.white}/>}/>
+      <Row icon="receipt-outline" title="Hide transaction details" subtitle={privacyAccount.hideTransactionDetails?'Amounts and counterparties are redacted by the server':'Hide amounts and counterparties in your history'} action={<Switch value={Boolean(privacyAccount.hideTransactionDetails)} onValueChange={enabled=>savePrivacy({hideTransactionDetails:enabled})} disabled={accountBusy} trackColor={{false:c.line,true:c.successSurface}} thumbColor={privacyAccount.hideTransactionDetails?c.green:c.white}/>}/>
     </Card>:null}
     <View style={{gap:11}}>
       <SectionTitle title="Trusted devices"/>
@@ -969,7 +974,7 @@ export function Settings({navigation}) {
     <Card style={{gap:13,borderColor:isAccountLocked?c.red:c.line}}>
       <SectionTitle title="Emergency account lock"/>
       <Row icon={isAccountLocked?'lock-closed':'lock-open-outline'} title={isAccountLocked?'Account locked':'Account unlocked'} subtitle={isAccountLocked?'Payment authorization is blocked on this device and by the server':'Lock the account if this device or account may be at risk'}/>
-      {lockSyncPending?<Text style={{color:'#94650D',fontSize:12,lineHeight:18}}>Local emergency lock is active. Server sync will retry automatically when this device can reach your account.</Text>:null}
+      {lockSyncPending?<Text style={{color:c.warning,fontSize:12,lineHeight:18}}>Local emergency lock is active. Server sync will retry automatically when this device can reach your account.</Text>:null}
       {isAccountLocked?<>
         <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>To unlock, enter your account password. This is checked by the server; local state is cleared only after it confirms the unlock.</Text>
         <TextInput value={unlockPassword} onChangeText={setUnlockPassword} placeholder="Account password" placeholderTextColor={c.muted} secureTextEntry autoCapitalize="none" maxLength={72} style={{minHeight:50,borderRadius:12,borderWidth:1,borderColor:c.line,paddingHorizontal:13,color:c.text,backgroundColor:c.bg}}/>
@@ -982,29 +987,35 @@ export function Settings({navigation}) {
       <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>The app has no native Bluetooth mesh client, sender signing keys, or approved payment settlement integration. No offline transaction is queued or shown as settled.</Text>
     </Card>
     <View style={{gap:11}}>
-      <SectionTitle title="Appearance"/>
-      {themes.map(option=>{
+      <TouchableOpacity onPress={()=>setAppearanceExpanded(value=>!value)} activeOpacity={.8} accessibilityRole="button" accessibilityState={{expanded:appearanceExpanded}}>
+        <Card style={{padding:14,flexDirection:'row',alignItems:'center',gap:12}}>
+          <View style={{width:42,height:42,borderRadius:14,backgroundColor:c.surface2,alignItems:'center',justifyContent:'center'}}><Ionicons name="color-palette-outline" size={20} color={c.blue}/></View>
+          <View style={{flex:1,gap:3}}><Text style={{color:c.text,fontSize:14,fontWeight:'800'}}>Appearance</Text><Text style={{color:c.muted,fontSize:12}}>Current: {themes.find(option=>option.id===settings.theme)?.title||'Daylight'} | Tap to change</Text></View>
+          <Ionicons name={appearanceExpanded?'chevron-up':'chevron-down'} size={19} color={c.muted}/>
+        </Card>
+      </TouchableOpacity>
+      {appearanceExpanded?themes.map(option=>{
         const selected=settings.theme===option.id;
         return <TouchableOpacity key={option.id} onPress={()=>chooseTheme(option.id)} disabled={saving} accessibilityRole="radio" accessibilityState={{checked:selected}}>
           <Card style={{padding:14,borderColor:selected?c.blue:c.line,backgroundColor:selected?c.surface2:c.surface,flexDirection:'row',alignItems:'center',gap:12}}>
-            <View style={{width:42,height:42,borderRadius:14,backgroundColor:selected?c.blue:c.surface2,alignItems:'center',justifyContent:'center'}}><Ionicons name={option.icon} size={19} color={selected?c.white:c.blue}/></View>
+            <View style={{width:42,height:42,borderRadius:14,backgroundColor:selected?c.accentButton:c.surface2,alignItems:'center',justifyContent:'center'}}><Ionicons name={option.icon} size={19} color={selected?c.accentOn:c.blue}/></View>
             <View style={{flex:1,gap:3}}><Text style={{color:c.text,fontSize:14,fontWeight:'800'}}>{option.title}</Text><Text style={{color:c.muted,fontSize:12}}>{option.subtitle}</Text></View>
             <Ionicons name={selected?'checkmark-circle':'ellipse-outline'} size={21} color={selected?c.blue:c.muted}/>
           </Card>
         </TouchableOpacity>;
-      })}
+      }):null}
     </View>
     <View style={{gap:11}}>
       <SectionTitle title="Notifications"/>
       <Card style={{gap:13}}>
-        <Row icon="notifications-outline" title={Platform.OS==='web'?'Browser notifications':'Payment notifications'} subtitle={Platform.OS==='web'?'Allow browser notification banners':'Receive settled-payment alerts on this device'} action={<Switch value={Boolean(settings.notificationsEnabled&&permission==='granted')} onValueChange={toggleNotifications} disabled={!notificationSupport||saving} trackColor={{false:c.line,true:'#A5D9CB'}} thumbColor={settings.notificationsEnabled&&permission==='granted'?c.green:c.white}/>}/>
+        <Row icon="notifications-outline" title={Platform.OS==='web'?'Browser notifications':'Payment notifications'} subtitle={Platform.OS==='web'?'Allow browser notification banners':'Receive settled-payment alerts on this device'} action={<Switch value={Boolean(settings.notificationsEnabled&&permission==='granted')} onValueChange={toggleNotifications} disabled={!notificationSupport||saving} trackColor={{false:c.line,true:c.successSurface}} thumbColor={settings.notificationsEnabled&&permission==='granted'?c.green:c.white}/>}/>
         <Text style={{color:c.muted,fontSize:12,lineHeight:18}}>{Platform.OS==='web'?'Browser permission only; remote payment push delivery is available in the native app.':'Background push uses Expo Push through FCM/APNs. An EAS project ID and push credentials are required for a development or production build.'}</Text>
-        <Row icon="volume-high-outline" title="Notification sound" subtitle={settings.notificationSoundEnabled?'Play the device sound for new payment alerts':'Payment alerts will be silent'} action={<Switch value={Boolean(settings.notificationSoundEnabled)} onValueChange={toggleNotificationSound} disabled={!settings.notificationsEnabled||saving} trackColor={{false:c.line,true:'#A5D9CB'}} thumbColor={settings.notificationSoundEnabled?c.green:c.white}/>}/>
+        <Row icon="volume-high-outline" title="Notification sound" subtitle={settings.notificationSoundEnabled?'Play the device sound for new payment alerts':'Payment alerts will be silent'} action={<Switch value={Boolean(settings.notificationSoundEnabled)} onValueChange={toggleNotificationSound} disabled={!settings.notificationsEnabled||saving} trackColor={{false:c.line,true:c.successSurface}} thumbColor={settings.notificationSoundEnabled?c.green:c.white}/>}/>
         {settings.notificationsEnabled&&permission==='granted'?<Button title="Send test notification" variant="outline" icon="paper-plane-outline" onPress={sendTestNotification}/>:null}
         {permission==='denied'?<Text style={{color:c.red,fontSize:12,lineHeight:18}}>Notifications are blocked in device or browser settings. Allow them there, then enable notifications again.</Text>:null}
       </Card>
     </View>
-    <Card style={{gap:12,borderColor:'#F3B6BC'}}>
+    <Card style={{gap:12,borderColor:c.red}}>
       <SectionTitle title="Account deletion"/>
       {deletionRequest?.status==='PENDING_DELETION'?<>
         <Text style={{color:c.text,fontSize:13,lineHeight:20}}>Your deletion request is pending. Logging in during the 72-hour grace period cancels it.</Text>
@@ -1013,7 +1024,7 @@ export function Settings({navigation}) {
         <Text style={{color:c.blue,fontWeight:'800'}}>Remaining: {Math.floor((deletionRequest.remainingSeconds||0)/3600)}h {Math.floor(((deletionRequest.remainingSeconds||0)%3600)/60)}m</Text>
       </>:<Button title="Delete Account" icon="trash-outline" variant="danger" disabled={accountBusy} onPress={openDeleteFlow}/>}
     </Card>
-    {message?<Text accessibilityRole="status" style={{color:message.startsWith('Could not')||message.includes('failed')?c.red:c.muted,fontSize:12,lineHeight:18}}>{message}</Text>:null}
+    {message?<Text accessibilityLiveRegion="polite" style={{color:message.startsWith('Could not')||message.includes('failed')?c.red:c.muted,fontSize:12,lineHeight:18}}>{message}</Text>:null}
     <Modal visible={deleteModal} transparent animationType="fade" onRequestClose={()=>{if(deleteStage==='confirm')setDeleteModal(false);}}>
       <View style={{flex:1,backgroundColor:'rgba(5,20,40,.58)',justifyContent:'center',padding:22}}>
         <Card style={{gap:14,borderRadius:22,padding:20}}>
@@ -1302,11 +1313,11 @@ export function BankAccounts() {
 
   return <Page><Header title="Wallet"/>
     <Card style={{backgroundColor:c.navy,borderColor:c.navy,gap:10}}>
-      <Text style={{color:'#C5D6E7',fontWeight:'700',fontSize:13}}>BANK BALANCE</Text>
+      <Text style={{color:c.onNavyMuted,fontWeight:'700',fontSize:13}}>BANK BALANCE</Text>
       <Text style={{color:c.white,fontSize:24,fontWeight:'900'}}>{privacyAccount?.hideBalance?'Hidden':'Unavailable'}</Text>
-      <Text style={{color:'#C5D6E7',fontSize:12,lineHeight:18}}>{privacyAccount?.hideBalance?'Balance visibility is hidden by your privacy setting.':'Balance access needs approved Account Aggregator production access and your explicit consent. No balance is estimated or simulated.'}</Text>
+      <Text style={{color:c.onNavyMuted,fontSize:12,lineHeight:18}}>{privacyAccount?.hideBalance?'Balance visibility is hidden by your privacy setting.':'Balance access needs approved Account Aggregator production access and your explicit consent. No balance is estimated or simulated.'}</Text>
       <Button title="Check Bank Balance" variant="outline" disabled={!balanceReady||busy} onPress={checkBalance}/>
-      {balanceMessage?<Text style={{color:'#FFD6D6',fontSize:12}}>{balanceMessage}</Text>:null}
+      {balanceMessage?<Text style={{color:c.red,fontSize:12}}>{balanceMessage}</Text>:null}
     </Card>
     <Card style={{gap:10}}>
       <SectionTitle title="My payment QR"/>
@@ -1367,7 +1378,7 @@ export function BankAccounts() {
         <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{maxHeight:280}} contentContainerStyle={{gap:8,paddingBottom:2}}>
           {visibleBanks.map(bank=>{
             const selected=selectedBank===bank;
-            return <TouchableOpacity key={bank} onPress={()=>setSelectedBank(bank)} accessibilityRole="radio" accessibilityLabel={bank} accessibilityState={{checked:selected}} style={{minHeight:58,paddingHorizontal:11,paddingVertical:8,borderRadius:13,backgroundColor:selected?'#EAF2FF':c.surface,borderWidth:1,borderColor:selected?c.blue:c.line,flexDirection:'row',alignItems:'center',gap:11}}>
+            return <TouchableOpacity key={bank} onPress={()=>setSelectedBank(bank)} accessibilityRole="radio" accessibilityLabel={bank} accessibilityState={{checked:selected}} style={{minHeight:58,paddingHorizontal:11,paddingVertical:8,borderRadius:13,backgroundColor:selected?c.infoSurface:c.surface,borderWidth:1,borderColor:selected?c.blue:c.line,flexDirection:'row',alignItems:'center',gap:11}}>
               <BankMark bank={bank}/>
               <Text numberOfLines={2} style={{flex:1,color:c.text,fontWeight:'700',fontSize:13}}>{bank}</Text>
               <Ionicons name={selected?'radio-button-on':'radio-button-off'} size={20} color={selected?c.blue:c.muted}/>
@@ -1415,10 +1426,11 @@ export function BankAccounts() {
 }
 
 export function Offline({navigation}) {
-  return <Page background={c.navy}>
-    <StatusBar style="light"/>
+  const {resolvedTheme}=useApp();
+  return <Page background={c.bg}>
+    <StatusBar style={resolvedTheme==='dark'||resolvedTheme==='lavender'?'light':'dark'}/>
     <Header title="Offline payments" back onBack={()=>navigation.goBack()}/>
-    <View style={{alignItems:'center',gap:16,paddingTop:44}}><View style={{width:86,height:86,borderRadius:28,backgroundColor:'#142E4C',alignItems:'center',justifyContent:'center'}}><Ionicons name="cloud-offline-outline" size={40} color={c.cyan}/></View><Text style={{color:c.white,fontWeight:'900',fontSize:22,textAlign:'center'}}>Offline mode is not active</Text><Text style={{color:'#B4C7DA',fontSize:14,lineHeight:22,textAlign:'center'}}>This app build does not have peer-to-peer Bluetooth payment support. No transfer is queued or sent offline.</Text></View>
+    <View style={{alignItems:'center',gap:16,paddingTop:44}}><View style={{width:86,height:86,borderRadius:28,backgroundColor:c.surface2,alignItems:'center',justifyContent:'center'}}><Ionicons name="cloud-offline-outline" size={40} color={c.cyan}/></View><Text style={{color:c.text,fontWeight:'900',fontSize:22,textAlign:'center'}}>Offline mode is not active</Text><Text style={{color:c.muted,fontSize:14,lineHeight:22,textAlign:'center'}}>This app build does not have peer-to-peer Bluetooth payment support. No transfer is queued or sent offline.</Text></View>
     <View style={{marginTop:'auto',paddingTop:36}}><Button title="Back to home" onPress={()=>navigation.navigate('Main',{screen:'Home'})}/></View>
   </Page>;
 }
