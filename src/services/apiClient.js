@@ -48,9 +48,9 @@ async function request(path, { method='GET', body, timeoutMs=9000 } = {}) {
     if (response.status === 423 && data?.code === 'APP_LOCK_REQUIRED' && appLockRequiredHandler) {
       try { appLockRequiredHandler(); } catch {}
     }
-    // An expired or revoked token on a protected call ends the session everywhere.
-    // /api/auth/* calls handle their own 401 (wrong password, restore-session).
-    if (response.status === 401 && accessToken && !path.startsWith('/api/auth/') && unauthorizedHandler) {
+    // Only the authentication entry point's code denotes an expired/revoked session.
+    // Protected endpoints also use 401 for bad passwords and OTPs.
+    if (response.status === 401 && data?.code === 'AUTHENTICATION_REQUIRED' && accessToken && !path.startsWith('/api/auth/') && unauthorizedHandler) {
       try { unauthorizedHandler(); } catch {}
     }
     throw new ApiClientError(data?.message || data?.error || `Request failed (${response.status}).`, { status:response.status });
